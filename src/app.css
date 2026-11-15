@@ -95,3 +95,10 @@ button:focus-visible{outline:2px solid var(--brand-sprout);outline-offset:2px}
 .radio{width:22px;height:22px;border-radius:50%;border:2px solid var(--border-default);display:grid;place-items:center;flex:none}
 .option.sel .radio{background:var(--accent-default);border-color:var(--accent-default)}
 .sheet .link{align-self:center;padding:6px 12px}
+
+/* soft blurred fade behind the tab bar */
+.tabbar{isolation:isolate;z-index:5}
+.tabbar::before{content:'';position:absolute;z-index:-1;pointer-events:none;left:-16px;right:-16px;top:-36px;bottom:-30px;
+  background:linear-gradient(to top,rgba(248,246,240,.8),rgba(248,246,240,0));
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  -webkit-mask-image:linear-gradient(to top,#000 60%,transparent);mask-image:linear-gradient(to top,#000 60%,transparent)}
