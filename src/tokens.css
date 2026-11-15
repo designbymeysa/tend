@@ -1,0 +1,32 @@
+/* Tokens taken from the Tend Figma variables (file mSV0x8byNCx4aUGLm6HpNG) */
+:root {
+  --bg-canvas:#f8f6f0; --bg-surface:#ffffff; --bg-surface-muted:#f2f0e9; --bg-glass:rgba(255,255,255,.88);
+  --text-primary:#1b1a19; --text-secondary:#494744; --text-muted:#65625d; --text-disabled:#a8a59f; --text-on-accent:#fff;
+  --border-subtle:#eeede9; --border-default:#e2e0db;
+  --accent-default:#1b1a19; --accent-track:#eeede9; --accent-subtle:#ece8ff; --accent-highlight:#eeede9; --brand-sprout:#a99bf5;
+  --status-done:#1b1a19; --task-past-bg:#f2f0e9; --task-past-icon-bg:#cdcac4;
+  --group-work-bg:#ddeeff; --group-work-strong:#8cc4ff; --group-work-text:#1d5a8f;
+  --group-study-bg:#dcf5e9; --group-study-strong:#7fd9b3; --group-study-text:#1f6b4e;
+  --group-personal-bg:#fce3f0; --group-personal-strong:#f49ad0; --group-personal-text:#8a2e64;
+  --group-lifestyle-bg:#fff6cc; --group-lifestyle-strong:#f5d75a; --group-lifestyle-text:#6b5410;
+  --space-2xs:4px; --space-xs:8px; --space-sm:12px; --space-md:16px; --space-lg:20px; --space-xl:24px;
+  --radius-md:14px; --radius-lg:20px; --radius-xl:28px; --radius-full:999px; --radius-card:26px;
+  --font-sans:'Instrument Sans',system-ui,sans-serif; --font-mono:'Geist Mono',ui-monospace,monospace;
+  /* depth */
+  --depth-raised-small:0 1px 0 rgba(27,26,25,.09),0 2px 3px rgba(27,26,25,.03),inset 0 1px 1px rgba(255,255,255,.55),inset 0 -1px 2px rgba(27,26,25,.04);
+  --depth-card:0 2px 0 rgba(27,26,25,.09),0 4px 6px rgba(27,26,25,.04),inset 0 1.5px 1px rgba(255,255,255,.55),inset 0 -2px 3px rgba(27,26,25,.04);
+  --depth-inset:inset 0 1.5px 3px rgba(27,26,25,.08),inset 0 -1px 1px rgba(255,255,255,.55);
+  --depth-selected:0 1px 0 rgba(27,26,25,.22),0 2px 1.5px rgba(27,26,25,.05),inset 0 1px 1px rgba(255,255,255,.12),inset 0 -1px 2px rgba(0,0,0,.25);
+  --elevation-floating:0 8px 24px rgba(23,23,23,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body,#root{height:100%}
+body{background:#ebe8e0;font-family:var(--font-sans);color:var(--text-primary);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:inherit}
+.mono{font-family:var(--font-mono);text-transform:uppercase}
+.label-mono{font-family:var(--font-mono);font-weight:500;font-size:11px;line-height:14px;letter-spacing:.88px;text-transform:uppercase}
+.label-mono-sm{font-family:var(--font-mono);font-weight:400;font-size:10px;line-height:12px;letter-spacing:.8px;text-transform:uppercase}
+.headline{font-weight:600;font-size:17px;line-height:22px}
+.callout{font-weight:500;font-size:15px;line-height:20px}
+.footnote{font-weight:400;font-size:13px;line-height:18px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
