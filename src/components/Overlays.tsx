@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Sheet, SheetHeader, OptionRow } from './Sheet'
 import { IconCheck, IconContinue, IconFlag, IconLaptop, IconPause, IconPlus, IconRelease, IconRescope, IconSparkle, IconSplit, IconCalendar, IconList, IconBriefcase, IconBook, IconHeart } from './Icons'
 import { CapacityBar } from './ui'
-import { Choice, Group, effortLabel, fmtDur, useTend } from '../state/store'
+import { Choice, Group, Task, effortLabel, fmtDur, useTend } from '../state/store'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const WD = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
@@ -74,6 +74,7 @@ export function CaptureSheet({ onClose }: { onClose: () => void }) {
 export function FocusSheet({ onClose, onPause }: { onClose: () => void; onPause: () => void }) {
   const { tasks, focusId, remaining, sessionMin, tick, toggleDone } = useTend()
   const task = tasks.find((t) => t.id === focusId)
+  const showTimer = useTend((s) => s.settings.showTimer)
   useEffect(() => { const i = setInterval(tick, 1000); return () => clearInterval(i) }, [tick])
   if (!task) return null
   const total = sessionMin * 60, R = 112, C = 2 * Math.PI * R
@@ -87,7 +88,7 @@ export function FocusSheet({ onClose, onPause }: { onClose: () => void; onPause:
           <circle cx="124" cy="124" r={R} fill="none" stroke="var(--accent-track)" strokeWidth="12" />
           <circle cx="124" cy="124" r={R} fill="none" stroke="var(--brand-sprout)" strokeWidth="12" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - remaining / total)} transform="rotate(-90 124 124)" style={{ transition: 'stroke-dashoffset 1s linear' }} />
         </svg>
-        <div className="ring-in"><IconLaptop size={28} /><b className="time">{mm}:{ss}</b><span className="label-mono-sm muted">LEFT OF {sessionMin} MIN</span></div>
+        <div className="ring-in"><IconLaptop size={28} />{showTimer ? <><b className="time">{mm}:{ss}</b><span className="label-mono-sm muted">LEFT OF {sessionMin} MIN</span></> : <span className="label-mono-sm muted">TIMER HIDDEN</span>}</div>
       </div>
       <p className="headline" style={{ textAlign: 'center' }}>{task.title}</p>
       <div className="round-row">
@@ -122,5 +123,23 @@ export function TransitionSheet({ onClose }: { onClose: () => void }) {
       <button className="btn primary" onClick={confirm}>Confirm</button>
       <button className="link" onClick={onClose}>Decide later</button>
     </Sheet>
+  )
+}
+
+export function DecisionSheet({ task, onClose }: { task: Task; onClose: () => void }) {
+  const decide = useTend((s) => s.decide)
+  const act = (to: 'today' | 'later' | 'release') => { decide(task.id, to); onClose() }
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="sheet" role="dialog" aria-label="Decide what to do with this task" onClick={(e) => e.stopPropagation()}>
+        <i className="grab" />
+        <p className="headline">{task.title}</p>
+        <p className="footnote muted">No rush. Choose what fits, or leave it for now.</p>
+        <button className="btn primary" onClick={() => act('today')}>Add to today</button>
+        <button className="btn" onClick={() => act('later')}>Keep for later</button>
+        <button className="btn" onClick={() => act('release')}>Let it go</button>
+        <button className="link" onClick={onClose}>Leave it for now</button>
+      </div>
+    </div>
   )
 }

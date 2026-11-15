@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
-import { CapacityBar, DateTag, DayPill, EffortChip, ProfileButton, SectionHeader, TaskCard, ViewSwitch, groupVar } from '../components/ui'
+import { CapacityBar, DateTag, DayPill, EffortChip, PageHeader, SectionHeader, TaskCard, ViewSwitch, groupVar } from '../components/ui'
 import { IconCalendar } from '../components/Icons'
+import { DecisionSheet } from '../components/Overlays'
 import { Task, commitments, effortLabel, fmtDur, fromMin, toMin, useTend } from '../state/store'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
@@ -25,7 +26,7 @@ export default function Today({ onProfile }: { onProfile: () => void }) {
 
   return (
     <div className="screen">
-      <header className="header"><div className="top-right"><ProfileButton onClick={onProfile} /></div><h1>Today</h1></header>
+      <PageHeader title="Today" onProfile={onProfile} />
       <ViewSwitch value={view} onChange={setView} />
       <div className="week">{week.map((w) => <DayPill key={w.day} day={w.day} date={w.date} planned={w.planned} selected={w.isToday} />)}</div>
 
@@ -46,8 +47,7 @@ export default function Today({ onProfile }: { onProfile: () => void }) {
             <section className="stack">
               <SectionHeader title="Waiting for a decision" />
               {decisions.map((t) => (
-                <TaskCard key={t.id} task={t} onOpen={() => setSheet(t)} onToggle={() => setSheet(t)}
-                  meta={<><EffortChip label={effortLabel(t.effort)} /><DateTag label={`PLANNED FOR ${t.plannedFor}`} /></>} />
+                <TaskCard key={t.id} task={t} onOpen={() => setSheet(t)} onToggle={() => setSheet(t)} />
               ))}
             </section>
           )}
@@ -120,20 +120,3 @@ function Timeline({ onDecide }: { onDecide: (t: Task) => void }) {
   )
 }
 
-function DecisionSheet({ task, onClose }: { task: Task; onClose: () => void }) {
-  const decide = useTend((s) => s.decide)
-  const act = (to: 'today' | 'later' | 'release') => { decide(task.id, to); onClose() }
-  return (
-    <div className="scrim" onClick={onClose}>
-      <div className="sheet" role="dialog" aria-label="Decide what to do with this task" onClick={(e) => e.stopPropagation()}>
-        <i className="grab" />
-        <p className="headline">{task.title}</p>
-        <p className="footnote muted">No rush. Choose what fits, or leave it for now.</p>
-        <button className="btn primary" onClick={() => act('today')}>Add to today</button>
-        <button className="btn" onClick={() => act('later')}>Keep for later</button>
-        <button className="btn" onClick={() => act('release')}>Let it go</button>
-        <button className="link" onClick={onClose}>Leave it for now</button>
-      </div>
-    </div>
-  )
-}
