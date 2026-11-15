@@ -2,13 +2,20 @@ import { useEffect, useState } from 'react'
 import { GROUP_LABEL, PageHeader, SectionHeader, Sticky, TaskCard, groupVar } from '../components/ui'
 import { IconSearch } from '../components/Icons'
 import { TaskSheet } from '../components/Overlays'
-import { Group, TaskView, todayIso, useTasks } from '../state/store'
+import { Group, TaskView, dayName, todayIso, useTasks } from '../state/store'
 
 const GROUPS: Exclude<Group, 'none'>[] = ['work', 'study', 'personal', 'lifestyle']
+type When = 'all' | 'timed' | 'planned' | 'whenever' | 'done'
+const WHEN: [When, string][] = [['all', 'All'], ['timed', 'Timed'], ['planned', 'Planned'], ['whenever', 'Whenever'], ['done', 'Done']]
+const GROUP_FILTERS: [Group | 'any', string][] = [['any', 'Any group'], ['work', 'Work'], ['study', 'Study'], ['personal', 'Personal'], ['lifestyle', 'Lifestyle'], ['none', 'No group']]
+const byDay = (a: TaskView, b: TaskView) => (a.date ?? '9999').localeCompare(b.date ?? '9999') || (a.start ?? '99').localeCompare(b.start ?? '99') || a.title.localeCompare(b.title)
 
 export default function Plan({ onProfile, reveal }: { onProfile: () => void; reveal?: { group: Group; id: string; n: number } }) {
   const tasks = useTasks()
   const [q, setQ] = useState('')
+  const [view, setView] = useState<'overview' | 'all'>('overview')
+  const [when, setWhen] = useState<When>('all')
+  const [grp, setGrp] = useState<Group | 'any'>('any')
   const [open, setOpen] = useState<Group | null>('work')
   const [allPast, setAllPast] = useState(false)
   const [sheet, setSheet] = useState<string | null>(null)
@@ -28,7 +35,14 @@ export default function Plan({ onProfile, reveal }: { onProfile: () => void; rev
   const past = live.filter((t) => t.status === 'decision')
   const card = (t: TaskView) => <TaskCard key={t.id} task={t} onOpen={() => setSheet(t.id)} onToggle={() => setSheet(t.id)} />
   const query = q.trim().toLowerCase()
-  const hits = query ? live.filter((t) => t.title.toLowerCase().includes(query) || GROUP_LABEL[t.group].toLowerCase().includes(query)) : []
+  const inWhen = (t: TaskView, w: When) => w === 'done' ? t.done : !t.done && (w === 'all' || (w === 'timed' ? !!t.start : w === 'planned' ? !!t.date : !t.date))
+  const matches = (t: TaskView) => (!query || t.title.toLowerCase().includes(query) || GROUP_LABEL[t.group].toLowerCase().includes(query) || (!!t.date && dayName(t.date).toLowerCase().includes(query)))
+    && (grp === 'any' || t.group === grp) && (view === 'all' ? inWhen(t, when) : !t.done)
+  const filtering = view === 'all' || !!query
+  const results = filtering ? tasks.filter(matches).sort(byDay) : []
+  const anyFilter = !!query || when !== 'all' || grp !== 'any'
+  const clear = () => { setQ(''); setWhen('all'); setGrp('any') }
+  const count = (w: When) => tasks.filter((t) => inWhen(t, w)).length
 
   return (
     <div className="screen roomy">
@@ -45,10 +59,23 @@ export default function Plan({ onProfile, reveal }: { onProfile: () => void; rev
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tasks, groups or projects" aria-label="Search tasks, groups or projects" />
       </label>
 
-      {query ? (
+      <div className="viewswitch" role="tablist" aria-label="Plan view">
+        {(['overview', 'all'] as const).map((v) => <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => setView(v)}>{v === 'overview' ? 'Overview' : `All tasks · ${count('all')}`}</button>)}
+      </div>
+      {view === 'all' && (
+        <div className="filters">
+          <div className="fchips" role="radiogroup" aria-label="Show">{WHEN.map(([id, label]) => <button key={id} role="radio" aria-checked={when === id} className={`pchip ${when === id ? 'on' : ''}`} onClick={() => setWhen(id)}>{label}<span className="fcount label-mono-sm">{count(id)}</span></button>)}</div>
+          <div className="fchips" role="radiogroup" aria-label="Group">{GROUP_FILTERS.map(([id, label]) => <button key={id} role="radio" aria-checked={grp === id} className={`pchip ${grp === id ? 'on' : ''}`} onClick={() => setGrp(id)}>{id !== 'any' && id !== 'none' && <i className="gdot" style={{ background: groupVar(id).strong }} />}{label}</button>)}</div>
+        </div>
+      )}
+
+      {filtering ? (
         <section className="sec">
-          <SectionHeader title="Results" aside={`${hits.length} ${hits.length === 1 ? 'task' : 'tasks'}`} />
-          {hits.length ? hits.map(card) : <p className="footnote muted">Nothing matches that yet.</p>}
+          <SectionHeader title={view === 'all' ? (when === 'done' ? 'Done' : 'All tasks') : 'Results'} aside={`${results.length} ${results.length === 1 ? 'task' : 'tasks'}`} />
+          {results.length ? results.map(card) : (
+            <div className="sec"><p className="footnote muted">{anyFilter ? 'Nothing matches that yet.' : 'No tasks yet. Tap + to add one.'}</p>
+              {anyFilter && <button className="link" onClick={clear}>Clear search and filters</button>}</div>
+          )}
         </section>
       ) : (<>
         {coming.length > 0 && <section className="sec"><SectionHeader title="Coming up" />{coming.map(card)}</section>}

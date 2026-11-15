@@ -23,7 +23,9 @@ export function TaskMeta({ task }: { task: TaskView }) {
   return (<>
     <EffortChip label={effortLabel(task.effort)} />
     {task.due && <DeadlineTag label={`DUE ${dayLabel(task.due)}`} />}
-    {task.status === 'decision' ? <DateTag label={`PLANNED FOR ${weekday(task.date!)}`} /> : task.date && task.date !== todayIso() ? <DateTag label={`PLANNED ${dayLabel(task.date)}`} /> : null}
+    {task.status === 'decision' ? <DateTag label={`PLANNED FOR ${weekday(task.date!)}${task.start ? ' · ' + task.start : ''}`} />
+      : task.date === todayIso() ? (task.start ? <DateTag label={`TODAY · ${task.start}`} /> : null)
+      : task.date ? <DateTag label={`PLANNED ${dayLabel(task.date)}${task.start ? ' · ' + task.start : ''}`} /> : null}
   </>)
 }
 /** Pick a day: quick chips plus the native date picker. `undefined` means no day. */

@@ -261,3 +261,10 @@ button.mcell{font:inherit;font-weight:500;font-size:15px;line-height:20px}
 .link.danger{color:var(--text-muted)}
 
 .toast{position:absolute;left:50%;bottom:112px;transform:translateX(-50%);z-index:20;max-width:calc(100% - 32px);padding:10px 18px;border-radius:var(--radius-full);background:var(--accent-default);color:#fff;font-weight:500;font-size:14px;line-height:20px;box-shadow:var(--elevation-floating);animation:up .25s ease;white-space:nowrap}
+
+.filters{display:flex;flex-direction:column;gap:8px;margin:-12px calc(-1 * var(--space-md)) 0}
+.fchips{display:flex;gap:8px;overflow-x:auto;padding:4px var(--space-md);scrollbar-width:none}
+.fchips::-webkit-scrollbar{display:none}
+.fchips .pchip{flex:none;min-height:34px;padding:0 12px;font-size:13px}
+.fchips .pchip .gdot{width:8px;height:8px}
+.fcount{margin-left:2px;opacity:.6}
