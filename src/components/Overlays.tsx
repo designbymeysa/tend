@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Sheet, SheetHeader, OptionRow } from './Sheet'
-import { IconCheck, IconContinue, IconFlag, IconLaptop, IconPause, IconPlay, IconPlus, IconRelease, IconRescope, IconSparkle, IconSplit, IconCalendar, IconList, IconBriefcase, IconBook, IconHeart } from './Icons'
-import { CapacityBar, CapacitySlider, DayPicker } from './ui'
+import { IconCheck, IconContinue, IconFlag, IconLaptop, IconPause, IconPlay, IconPlus, IconRelease, IconRescope, IconSparkle, IconSplit, IconCalendar, IconList, IconBriefcase, IconBook, IconHeart, IconChevronDown } from './Icons'
+import { CapacityBar, CapacitySlider, DayPicker, GROUP_LABEL } from './ui'
 import { Choice, Group, addDays, capacityFor, dayLabel, dayName, effortLabel, fmtDur, statusOf, todayIso, usedOn, useTend } from '../state/store'
 
 const WD = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
@@ -82,41 +82,54 @@ export function CaptureSheet({ onClose, day }: { onClose: () => void; day?: stri
   )
 }
 
-/** Everything about one task: edit it, plan it, start it, finish it or delete it. Edits save as you go. */
+/** Everything about one task. Quick actions on top, details as a short list of rows that open one at a time. Edits save as you go. */
+type Row = 'when' | 'effort' | 'group' | 'due' | 'time'
 export function TaskSheet({ id, onClose }: { id: string; onClose: () => void }) {
   const { tasks, focusId, updateTask, deleteTask, toggleDone, openFocus } = useTend()
   const [confirm, setConfirm] = useState(false)
+  const [open, setOpen] = useState<Row | null>(null)
   const task = tasks.find((t) => t.id === id)
   useEffect(() => { if (!task) onClose() }, [task, onClose])
   if (!task) return null
   const status = statusOf(task, focusId), today = todayIso()
   const up = (p: Parameters<typeof updateTask>[1]) => updateTask(id, p)
+  const eyebrow = status === 'done' ? 'DONE' : status === 'decision' ? `WAITING · WAS ${dayName(task.date!).toUpperCase()}` : status === 'saved' ? 'SAVED FOR LATER' : `PLANNED · ${dayName(task.date!).toUpperCase()}`
+  const row = (key: Row, label: string, value: string, body: React.ReactNode) => (
+    <div className="trow">
+      <button className="srow" aria-expanded={open === key} onClick={() => setOpen(open === key ? null : key)}>
+        <span className="srow-text"><span className="callout">{label}</span></span>
+        <span className="footnote" style={{ color: 'var(--text-secondary)' }}>{value}</span>
+        <span className={`chev ${open === key ? 'flip' : ''}`}><IconChevronDown size={18} /></span>
+      </button>
+      {open === key && <div className="trow-body">{body}</div>}
+    </div>
+  )
   return (
     <Sheet onClose={onClose} label="Task details">
-      <SheetHeader eyebrow={status === 'done' ? 'DONE' : status === 'decision' ? `PLANNED FOR ${dayName(task.date!).toUpperCase()} · WAITING` : status === 'saved' ? 'SAVED FOR LATER' : `PLANNED · ${dayName(task.date!).toUpperCase()}`} title="Task"
-        sub={status === 'decision' ? 'Not late, just waiting. Bring it along, move it, or let it go.' : undefined} />
-      <input className="capture-input" value={task.title} onChange={(e) => up({ title: e.target.value })} onBlur={(e) => !e.target.value.trim() && up({ title: 'Untitled task' })} aria-label="Task name" />
-      {!task.done && (<>
-        <button className="btn primary" onClick={() => { onClose(); openFocus(id) }}><IconPlay size={18} color="#fff" /> {focusId === id ? 'Resume focus' : 'Start focus'}</button>
-        {task.date !== today && <button className="btn" onClick={() => up({ date: today })}>{status === 'decision' ? 'Bring to today' : 'Add to today'}</button>}
-      </>)}
-      <Field label="WHEN"><DayPicker label="When" none="Whenever" value={task.date} onChange={(v) => up({ date: v, start: v ? task.start : undefined })} /></Field>
-      <Field label="EFFORT"><EffortPicker value={task.effort} onChange={(m) => up({ effort: m })} /></Field>
-      <Field label="GROUP"><GroupPicker value={task.group} onChange={(g) => up({ group: g })} /></Field>
-      <Field label="DEADLINE"><DayPicker label="Deadline" none="No deadline" quick={false} value={task.due} onChange={(v) => up({ due: v })} /></Field>
-      {task.date && (
-        <Field label="TIME OF DAY">
+      <div className="sheet-head">
+        <span className="label-mono">{eyebrow}</span>
+        <input className="title-input" value={task.title} onChange={(e) => up({ title: e.target.value })} onBlur={(e) => !e.target.value.trim() && up({ title: 'Untitled task' })} aria-label="Task name" />
+        {status === 'decision' && <p className="footnote" style={{ color: 'var(--text-secondary)' }}>Not late, just waiting. Bring it along, move it, or let it go.</p>}
+      </div>
+      <div className="actions">
+        {!task.done && <button className="btn primary" onClick={() => { onClose(); openFocus(id) }}><IconPlay size={18} color="#fff" /> {focusId === id ? 'Resume focus' : 'Start focus'}</button>}
+        <button className="btn" onClick={() => { toggleDone(id); onClose() }}><IconCheck size={18} /> {task.done ? 'Not done' : 'Done'}</button>
+      </div>
+      <div className="scard">
+        {row('when', 'Day', task.date ? dayName(task.date) : 'Whenever', <DayPicker label="Day" none="Whenever" value={task.date} onChange={(v) => up({ date: v, start: v ? task.start : undefined })} />)}
+        {row('effort', 'Effort', effortLabel(task.effort), <EffortPicker value={task.effort} onChange={(m) => up({ effort: m })} />)}
+        {row('group', 'Group', GROUP_LABEL[task.group], <GroupPicker value={task.group} onChange={(g) => up({ group: g })} />)}
+        {row('due', 'Deadline', task.due ? dayLabel(task.due) : 'None', <DayPicker label="Deadline" none="No deadline" quick={false} value={task.due} onChange={(v) => up({ due: v })} />)}
+        {task.date && row('time', 'Time of day', task.start ?? 'Any time', (
           <div className="chips">
             <button type="button" className={`pchip ${!task.start ? 'on' : ''}`} aria-pressed={!task.start} onClick={() => up({ start: undefined })}>Any time</button>
             <label className={`pchip date ${task.start ? 'on' : ''}`}>{task.start ?? 'Pick a time'}<input type="time" aria-label="Start time" value={task.start ?? ''} onChange={(e) => up({ start: e.target.value || undefined })} onClick={(e) => { try { e.currentTarget.showPicker() } catch { /* not supported */ } }} /></label>
           </div>
-        </Field>
-      )}
-      <button className="btn" onClick={() => { toggleDone(id); onClose() }}><IconCheck size={18} /> {task.done ? 'Mark as not done' : 'Mark as done'}</button>
+        ))}
+      </div>
       {confirm
         ? <div className="confirm"><span className="footnote">Delete this task for good?</span><button className="btn" onClick={() => setConfirm(false)}>Keep it</button><button className="btn primary" onClick={() => deleteTask(id)}>Delete</button></div>
-        : <button className="btn" onClick={() => setConfirm(true)}><IconRelease size={18} /> Delete task</button>}
-      <button className="link" onClick={onClose}>Done</button>
+        : <button className="link danger" onClick={() => setConfirm(true)}>Delete task</button>}
     </Sheet>
   )
 }
