@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { CapacityBar, DateTag, DayPill, EffortChip, PageHeader, SectionHeader, TaskCard, ViewSwitch, groupVar } from '../components/ui'
 import { IconCalendar } from '../components/Icons'
-import { DecisionSheet } from '../components/Overlays'
-import { Task, commitments, effortLabel, fmtDur, fromMin, toMin, useTend } from '../state/store'
+import { CapacitySheet, DecisionSheet } from '../components/Overlays'
+import { Task, commitments, effortLabel, fmtDur, fromMin, toMin, todayCapacity, usedToday, useTend } from '../state/store'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 function useWeek() {
@@ -13,12 +13,13 @@ function useWeek() {
 }
 
 export default function Today({ onProfile }: { onProfile: () => void }) {
-  const { tasks, view, setView, toggleDone, capacityMin, openFocus } = useTend()
+  const { tasks, view, setView, toggleDone, openFocus } = useTend()
   const week = useWeek()
   const [sheet, setSheet] = useState<Task | null>(null)
   const [showAll, setShowAll] = useState(false)
   const picked = tasks.filter((t) => t.picked)
-  const used = picked.filter((t) => t.status !== 'done').reduce((a, t) => a + t.effort, 0)
+  const used = usedToday(tasks), total = useTend(todayCapacity)
+  const [capOpen, setCapOpen] = useState(false)
   const decisions = tasks.filter((t) => t.status === 'decision')
   const later = tasks.filter((t) => t.status === 'saved').length
   const planned = tasks.filter((t) => !t.picked && t.status === 'planned')
@@ -32,7 +33,7 @@ export default function Today({ onProfile }: { onProfile: () => void }) {
 
       {view === 'focus' ? (
         <>
-          <CapacityBar used={used} total={capacityMin} fmt={fmtDur} />
+          <CapacityBar used={used} total={total} fmt={fmtDur} onEdit={() => setCapOpen(true)} />
           <section className="stack">
             <SectionHeader title="Focus for today" aside={`${picked.length} picked`} />
             {picked.map((t) => (
@@ -57,6 +58,7 @@ export default function Today({ onProfile }: { onProfile: () => void }) {
         <Timeline onDecide={setSheet} />
       )}
 
+      {capOpen && <CapacitySheet onClose={() => setCapOpen(false)} />}
       {sheet && <DecisionSheet task={sheet} onClose={() => setSheet(null)} />}
       <span hidden>{today.date}</span>
     </div>

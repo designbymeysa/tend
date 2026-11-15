@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { Group, Task, effortLabel } from '../state/store'
-import { Doodle, IconBook, IconBriefcase, IconCalendar, IconCheck, IconChevronLeft, IconChevronRight, IconClock, IconFlag, IconHeart, IconList, IconPlus, IconSparkle } from './Icons'
+import { Doodle, IconBook, IconBriefcase, IconCalendar, IconCheck, IconChevronLeft, IconChevronRight, IconClock, IconFlag, IconHeart, IconList, IconPencil, IconPlus, IconSparkle } from './Icons'
 
 export const groupVar = (g: Group) => g === 'none' ? { bg: 'var(--bg-surface-muted)', strong: 'var(--task-past-icon-bg)', text: 'var(--text-secondary)' } : ({ bg: `var(--group-${g}-bg)`, strong: `var(--group-${g}-strong)`, text: `var(--group-${g}-text)` })
 const groupIcon = { none: IconList, work: IconBriefcase, study: IconBook, personal: IconHeart, lifestyle: IconSparkle }
@@ -115,11 +115,12 @@ export function DayPill({ day, date, planned, selected, onClick }: { day: string
   )
 }
 
-export function CapacityBar({ used, total, fmt }: { used: number; total: number; fmt: (m: number) => string }) {
+export function CapacityBar({ used, total, fmt, onEdit }: { used: number; total: number; fmt: (m: number) => string; onEdit?: () => void }) {
   const over = used > total
   return (
     <div className="capacity">
-      <div className="cap-head"><span className="headline">Today's capacity</span><span className="callout">{fmt(used)} of {fmt(total)}</span></div>
+      <div className="cap-head"><span className="headline">Today's capacity</span>
+        {onEdit ? <button className="cap-edit callout" onClick={onEdit} aria-label={`Change today's capacity, now ${fmt(used)} of ${fmt(total)}`}>{fmt(used)} of {fmt(total)}<IconPencil size={16} /></button> : <span className="callout">{fmt(used)} of {fmt(total)}</span>}</div>
       <div className="track"><div className="fill" style={{ width: `${Math.min(100, (used / total) * 100)}%` }} /></div>
       <p className="footnote" style={{ color: 'var(--text-secondary)' }}>
         {over ? 'That is more than fits today. Want to move one for later?' : `${fmt(total - used)} free for whatever comes up`}

@@ -54,6 +54,8 @@ const defaultSettings: Settings = { theme: 'light', reduceMotion: false, showTim
 type State = {
   tasks: Task[]; view: 'focus' | 'timeline'; capacityMin: number
   settings: Settings; onboarded: boolean
+  capacityToday: { date: string; min: number } | null   // one-day override of the usual capacity
+  setCapacityToday: (m: number | null) => void
   setSetting: <K extends keyof Settings>(k: K, v: Settings[K]) => void
   setCapacity: (m: number) => void; setSessionMin: (m: number) => void; finishOnboarding: () => void
   focusId: string | null; focusOpen: boolean; remaining: number; sessionMin: number
@@ -66,7 +68,7 @@ type State = {
   reset: () => void
 }
 const load = (): Partial<State> => { try { return JSON.parse(localStorage.getItem('tend-demo-2') || '{}') } catch { return {} } }
-const persist = (s: State) => { try { localStorage.setItem('tend-demo-2', JSON.stringify({ tasks: s.tasks, view: s.view, capacityMin: s.capacityMin, sessionMin: s.sessionMin, settings: s.settings, onboarded: s.onboarded })) } catch { /* ignore */ } }
+const persist = (s: State) => { try { localStorage.setItem('tend-demo-2', JSON.stringify({ tasks: s.tasks, view: s.view, capacityMin: s.capacityMin, capacityToday: s.capacityToday, sessionMin: s.sessionMin, settings: s.settings, onboarded: s.onboarded })) } catch { /* ignore */ } }
 const saved = load()
 
 export const useTend = create<State>((set, get) => ({
@@ -74,6 +76,8 @@ export const useTend = create<State>((set, get) => ({
   focusId: 't1', focusOpen: false, remaining: 24 * 60 + 18, sessionMin: (saved.sessionMin as number) ?? 45,
   settings: { ...defaultSettings, ...(saved.settings as Partial<Settings>) }, onboarded: !!saved.onboarded,
   setSetting: (k, v) => { set((s) => ({ settings: { ...s.settings, [k]: v } })); persist(get()) },
+  capacityToday: (saved.capacityToday as State['capacityToday']) ?? null,
+  setCapacityToday: (m) => { set({ capacityToday: m === null ? null : { date: new Date().toDateString(), min: m } }); persist(get()) },
   setCapacity: (capacityMin) => { set({ capacityMin }); persist(get()) },
   setSessionMin: (sessionMin) => { set({ sessionMin }); persist(get()) },
   finishOnboarding: () => { set({ onboarded: true }); persist(get()) },
@@ -111,3 +115,7 @@ export const fmtDur = (m: number) => { const h = Math.floor(m / 60), r = m % 60;
 export const effortLabel = (m: number) => (m >= 60 && m % 60 === 0 ? `${m / 60}H` : `${m} MIN`)
 export const toMin = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m }
 export const fromMin = (n: number) => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`
+// Today's capacity: the one-day override if it was set today, otherwise the usual amount
+export const todayCapacity = (s: { capacityMin: number; capacityToday: { date: string; min: number } | null }) => s.capacityToday?.date === new Date().toDateString() ? s.capacityToday.min : s.capacityMin
+// Capacity counts everything chosen for today, finished or not: time already spent stays spent
+export const usedToday = (tasks: Task[]) => tasks.filter((t) => t.picked).reduce((a, t) => a + t.effort, 0)

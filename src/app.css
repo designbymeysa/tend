@@ -208,3 +208,5 @@ button:focus-visible{outline:2px solid var(--brand-sprout);outline-offset:2px}
 .slider:has(input:focus-visible) .th{outline:2px solid var(--brand-sprout);outline-offset:2px}
 .scale{display:flex;justify-content:space-between;width:100%;color:var(--text-muted)}
 .reduce-motion *,.reduce-motion *::before,.reduce-motion *::after{animation:none!important;transition:none!important}
+.cap-edit{display:inline-flex;align-items:center;gap:6px;min-height:44px;margin:-11px 0;color:var(--text-primary)}
+.cap-edit svg{color:var(--text-muted)}

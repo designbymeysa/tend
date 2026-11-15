@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Sheet, SheetHeader, OptionRow } from './Sheet'
 import { IconCheck, IconContinue, IconFlag, IconLaptop, IconPause, IconPlus, IconRelease, IconRescope, IconSparkle, IconSplit, IconCalendar, IconList, IconBriefcase, IconBook, IconHeart } from './Icons'
-import { CapacityBar } from './ui'
-import { Choice, Group, Task, effortLabel, fmtDur, useTend } from '../state/store'
+import { CapacityBar, CapacitySlider } from './ui'
+import { Choice, Group, Task, effortLabel, fmtDur, todayCapacity, usedToday, useTend } from '../state/store'
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 const WD = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
@@ -108,10 +108,10 @@ const OPTIONS: { id: Choice; icon: JSX.Element; title: string; sub: string }[] =
   { id: 'release', icon: <IconRelease size={20} />, title: 'Release', sub: 'Let it go, no strings' },
 ]
 export function TransitionSheet({ onClose }: { onClose: () => void }) {
-  const { focusId, remaining, sessionMin, applyChoice, tasks, capacityMin } = useTend()
+  const { focusId, remaining, sessionMin, applyChoice, tasks } = useTend()
   const [choice, setChoice] = useState<Choice>('continue')
   const spent = Math.max(1, Math.round((sessionMin * 60 - remaining) / 60))
-  const used = tasks.filter((t) => t.picked && t.status !== 'done').reduce((a, t) => a + t.effort, 0)
+  const used = usedToday(tasks), total = useTend(todayCapacity)
   const confirm = () => { if (focusId) applyChoice(focusId, choice); onClose() }
   return (
     <Sheet onClose={onClose} label="What feels right next">
@@ -119,7 +119,7 @@ export function TransitionSheet({ onClose }: { onClose: () => void }) {
       <div className="options" role="radiogroup">
         {OPTIONS.map((o) => <OptionRow key={o.id} icon={o.icon} title={o.title} sub={o.sub} selected={choice === o.id} onClick={() => setChoice(o.id)} />)}
       </div>
-      <CapacityBar used={used} total={capacityMin} fmt={fmtDur} />
+      <CapacityBar used={used} total={total} fmt={fmtDur} />
       <button className="btn primary" onClick={confirm}>Confirm</button>
       <button className="link" onClick={onClose}>Decide later</button>
     </Sheet>
@@ -141,5 +141,18 @@ export function DecisionSheet({ task, onClose }: { task: Task; onClose: () => vo
         <button className="link" onClick={onClose}>Leave it for now</button>
       </div>
     </div>
+  )
+}
+
+export function CapacitySheet({ onClose }: { onClose: () => void }) {
+  const { capacityMin, setCapacityToday } = useTend()
+  const total = useTend(todayCapacity)
+  return (
+    <Sheet onClose={onClose} label="Change today's capacity">
+      <SheetHeader eyebrow="JUST FOR TODAY" title="How much room is there today?" sub="This only changes today. Your usual amount stays in your profile." />
+      <CapacitySlider value={Math.min(480, Math.max(60, total))} onChange={setCapacityToday} />
+      <button className="btn primary" onClick={onClose}>Done</button>
+      {total !== capacityMin && <button className="link" onClick={() => setCapacityToday(null)}>Back to my usual {fmtDur(capacityMin)}</button>}
+    </Sheet>
   )
 }
