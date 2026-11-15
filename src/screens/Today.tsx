@@ -5,7 +5,7 @@ import { CapacitySheet, TaskSheet } from '../components/Overlays'
 import { TaskView, addDays, capacityFor, commitments, dayName, effortLabel, fmtDur, fromMin, iso, parseIso, toMin, todayIso, usedOn, useTasks, useTend, weekday } from '../state/store'
 
 export default function Today({ onProfile, onAdd }: { onProfile: () => void; onAdd: (day: string) => void }) {
-  const { view, setView, toggleDone, openFocus, day, setDay, remaining } = useTend()
+  const { view, setView, toggleDone, day, setDay, remaining } = useTend()
   const tasks = useTasks()
   const [sheet, setSheet] = useState<string | null>(null)
   const [capOpen, setCapOpen] = useState(false)
@@ -19,7 +19,7 @@ export default function Today({ onProfile, onAdd }: { onProfile: () => void; onA
   const waiting = tasks.filter((t) => t.status === 'decision')
   const later = tasks.filter((t) => t.status === 'saved').length
   const name = dayName(day)
-  const open = (t: TaskView) => t.status === 'in-focus' ? openFocus(t.id) : setSheet(t.id)
+  const open = (t: TaskView) => setSheet(t.id)
   const card = (t: TaskView) => <TaskCard key={t.id} task={t} onToggle={() => toggleDone(t.id)} onOpen={() => open(t)} label={t.status === 'in-focus' ? `● In focus · ${Math.ceil(remaining / 60)} min left` : undefined} />
 
   return (

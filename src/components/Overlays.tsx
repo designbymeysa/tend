@@ -96,9 +96,10 @@ export function TaskSheet({ id, onClose }: { id: string; onClose: () => void }) 
       <SheetHeader eyebrow={status === 'done' ? 'DONE' : status === 'decision' ? `PLANNED FOR ${dayName(task.date!).toUpperCase()} · WAITING` : status === 'saved' ? 'SAVED FOR LATER' : `PLANNED · ${dayName(task.date!).toUpperCase()}`} title="Task"
         sub={status === 'decision' ? 'Not late, just waiting. Bring it along, move it, or let it go.' : undefined} />
       <input className="capture-input" value={task.title} onChange={(e) => up({ title: e.target.value })} onBlur={(e) => !e.target.value.trim() && up({ title: 'Untitled task' })} aria-label="Task name" />
-      {!task.done && (task.date === today
-        ? <button className="btn primary" onClick={() => { onClose(); openFocus(id) }}><IconPlay size={18} color="#fff" /> Start focus</button>
-        : <button className="btn primary" onClick={() => up({ date: today })}>{status === 'decision' ? 'Bring to today' : 'Add to today'}</button>)}
+      {!task.done && (<>
+        <button className="btn primary" onClick={() => { onClose(); openFocus(id) }}><IconPlay size={18} color="#fff" /> {focusId === id ? 'Resume focus' : 'Start focus'}</button>
+        {task.date !== today && <button className="btn" onClick={() => up({ date: today })}>{status === 'decision' ? 'Bring to today' : 'Add to today'}</button>}
+      </>)}
       <Field label="WHEN"><DayPicker label="When" none="Whenever" value={task.date} onChange={(v) => up({ date: v, start: v ? task.start : undefined })} /></Field>
       <Field label="EFFORT"><EffortPicker value={task.effort} onChange={(m) => up({ effort: m })} /></Field>
       <Field label="GROUP"><GroupPicker value={task.group} onChange={(g) => up({ group: g })} /></Field>
