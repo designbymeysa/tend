@@ -46,7 +46,7 @@ export default function Today({ onProfile, onAdd }: { onProfile: () => void; onA
               {waiting.map((t) => <TaskCard key={t.id} task={t} onOpen={() => setSheet(t.id)} onToggle={() => setSheet(t.id)} />)}
             </section>
           )}
-          {isToday && <p className="callout muted">{later} more {later === 1 ? 'task is' : 'tasks are'} saved for later, out of sight.</p>}
+          {isToday && later > 0 && <p className="callout muted">{later} more {later === 1 ? 'task is' : 'tasks are'} saved for later, out of sight.</p>}
         </>
       ) : (
         <Timeline day={day} tasks={mine} onOpen={open} />

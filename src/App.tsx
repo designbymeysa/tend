@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import Welcome from './screens/Welcome'
 import Today from './screens/Today'
 import Plan from './screens/Plan'
 import Month from './screens/Month'
@@ -16,11 +17,12 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null)
   const [reveal, setReveal] = useState<{ group: Group; id: string; n: number }>()
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 3200); return () => clearTimeout(t) }, [toast])
-  const { focusOpen, closeFocus, onboarded, finishOnboarding, settings, day, setDay } = useTend()
+  const { focusOpen, closeFocus, onboarded, finishOnboarding, settings, day, setDay, mode } = useTend()
   // #onboarding replays the first-run flow at any time
   const [replay, setReplay] = useState(() => location.hash === '#onboarding')
   const scroll = useRef<HTMLDivElement>(null)
   useEffect(() => { scroll.current?.scrollTo(0, 0) }, [tab, page])
+  useEffect(() => { if (!mode) { setPage(null); setTab('today'); setCapture(null); setTransition(false) } }, [mode])
   const profile = () => setPage('profile')
   const endOnboarding = () => { finishOnboarding(); setReplay(false); if (location.hash) history.replaceState(null, '', location.pathname + location.search) }
   const addFor = (d: string) => setCapture({ day: d })
@@ -34,7 +36,7 @@ export default function App() {
   return (
     <div className="stage">
       <div className={`phone ${settings.reduceMotion ? 'reduce-motion' : ''}`}>
-        {!onboarded || replay ? <Onboarding onDone={endOnboarding} /> : (<>
+        {!mode ? <Welcome /> : !onboarded || replay ? <Onboarding onDone={endOnboarding} /> : (<>
           <div className="scroll" ref={scroll}>
             {page === 'profile' ? <Profile onBack={() => setPage(null)} onSettings={() => setPage('settings')} />
               : page === 'settings' ? <Settings onBack={() => setPage('profile')} />

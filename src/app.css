@@ -268,3 +268,13 @@ button.mcell{font:inherit;font-weight:500;font-size:15px;line-height:20px}
 .fchips .pchip{flex:none;min-height:34px;padding:0 12px;font-size:13px}
 .fchips .pchip .gdot{width:8px;height:8px}
 .fcount{margin-left:2px;opacity:.6}
+
+/* Welcome */
+.welcome{height:100%;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;gap:32px;padding:max(env(safe-area-inset-top),14px) var(--space-md) max(env(safe-area-inset-bottom),24px)}
+.welcome-top{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+.welcome-icon{border-radius:18px;box-shadow:var(--depth-card)}
+.welcome-options{display:flex;flex-direction:column;gap:12px}
+.wopt{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:20px;border-radius:var(--radius-card);background:var(--bg-surface);box-shadow:var(--depth-card);text-align:left;color:var(--text-primary)}
+.wopt b{font-weight:600;font-size:20px;line-height:26px;letter-spacing:-.2px}
+.wopt .footnote{color:var(--text-secondary)}
+.wopt:active{transform:translateY(1px)}

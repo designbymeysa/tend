@@ -86,24 +86,25 @@ type State = {
   setCapacity: (m: number) => void; setCapacityFor: (day: string, m: number | null) => void
   setSessionMin: (m: number) => void
   setSetting: <K extends keyof Settings>(k: K, v: Settings[K]) => void
+  mode: 'new' | 'demo' | null   // which scenario is being tried; null = show the welcome screen
+  startScenario: (m: 'new' | 'demo') => void; leaveScenario: () => void
   finishOnboarding: () => void; reset: () => void
 }
 const KEY = 'tend-demo-3'
 const load = (): Partial<State> => { try { return JSON.parse(localStorage.getItem(KEY) || '{}') } catch { return {} } }
-const persist = (s: State) => { try { localStorage.setItem(KEY, JSON.stringify({ tasks: s.tasks, view: s.view, capacityMin: s.capacityMin, capacityByDay: s.capacityByDay, sessionMin: s.sessionMin, settings: s.settings, onboarded: s.onboarded, focusId: s.focusId })) } catch { /* ignore */ } }
+const persist = (s: State) => { try { localStorage.setItem(KEY, JSON.stringify({ tasks: s.tasks, view: s.view, capacityMin: s.capacityMin, capacityByDay: s.capacityByDay, sessionMin: s.sessionMin, settings: s.settings, onboarded: s.onboarded, focusId: s.focusId, mode: s.mode })) } catch { /* ignore */ } }
 const saved = load()
-const fresh = !saved.tasks
 const nowTime = () => new Date().toTimeString().slice(0, 5)
 
 export const useTend = create<State>((set, get) => {
   const save = (fn: (s: State) => Partial<State>) => { set(fn); persist(get()) }
   const patch = (id: string, fn: (t: Task) => Task) => (s: State) => ({ tasks: s.tasks.map((t) => t.id === id ? fn(t) : t) })
   return {
-    tasks: saved.tasks ?? makeSeed(), view: saved.view ?? 'focus', day: todayIso(),
+    tasks: saved.tasks ?? [], mode: saved.mode ?? (saved.tasks ? 'demo' : null), view: saved.view ?? 'focus', day: todayIso(),
     capacityMin: saved.capacityMin ?? 210, capacityByDay: saved.capacityByDay ?? {},
     settings: { ...defaultSettings, ...saved.settings }, onboarded: !!saved.onboarded,
-    focusId: fresh ? 't1' : saved.focusId ?? null, focusOpen: false, sessionMin: saved.sessionMin ?? 45,
-    remaining: fresh ? 24 * 60 + 18 : (saved.sessionMin ?? 45) * 60,
+    focusId: saved.focusId ?? null, focusOpen: false, sessionMin: saved.sessionMin ?? 45,
+    remaining: (saved.sessionMin ?? 45) * 60,
     addTask: (t) => { const task: Task = { group: 'none', effort: 30, done: false, ...t, id: 'u' + Date.now() }; save((s) => ({ tasks: [...s.tasks, task] })); return task },
     updateTask: (id, p) => save(patch(id, (t) => ({ ...t, ...p }))),
     deleteTask: (id) => save((s) => ({ tasks: s.tasks.filter((t) => t.id !== id), focusId: s.focusId === id ? null : s.focusId, focusOpen: s.focusId === id ? false : s.focusOpen })),
@@ -135,6 +136,12 @@ export const useTend = create<State>((set, get) => {
     setSessionMin: (sessionMin) => save(() => ({ sessionMin })),
     setSetting: (k, v) => save((s) => ({ settings: { ...s.settings, [k]: v } })),
     finishOnboarding: () => save(() => ({ onboarded: true })),
+    startScenario: (mode) => save(() => ({
+      mode, day: todayIso(), view: 'focus' as const, capacityMin: 210, capacityByDay: {}, sessionMin: 45, settings: { ...defaultSettings },
+      tasks: mode === 'demo' ? makeSeed() : [], onboarded: mode === 'demo',
+      focusId: mode === 'demo' ? 't1' : null, remaining: mode === 'demo' ? 24 * 60 + 18 : 45 * 60, focusOpen: false,
+    })),
+    leaveScenario: () => save(() => ({ mode: null, focusOpen: false })),
     reset: () => save(() => ({ tasks: makeSeed(), view: 'focus', day: todayIso(), focusId: 't1', remaining: 24 * 60 + 18, capacityByDay: {} })),
   }
 })
