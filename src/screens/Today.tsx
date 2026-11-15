@@ -12,7 +12,7 @@ function useWeek() {
 }
 
 export default function Today({ onProfile }: { onProfile: () => void }) {
-  const { tasks, view, setView, toggleDone, capacityMin } = useTend()
+  const { tasks, view, setView, toggleDone, capacityMin, openFocus } = useTend()
   const week = useWeek()
   const [sheet, setSheet] = useState<Task | null>(null)
   const [showAll, setShowAll] = useState(false)
@@ -35,7 +35,7 @@ export default function Today({ onProfile }: { onProfile: () => void }) {
           <section className="stack">
             <SectionHeader title="Focus for today" aside={`${picked.length} picked`} />
             {picked.map((t) => (
-              <TaskCard key={t.id} task={t} onToggle={() => toggleDone(t.id)}
+              <TaskCard key={t.id} task={t} onToggle={() => toggleDone(t.id)} onOpen={t.status === 'in-focus' ? () => openFocus(t.id) : t.status === 'planned' ? () => openFocus(t.id) : undefined}
                 label={t.status === 'in-focus' ? '● In focus · 24 min left' : undefined}
                 meta={t.status === 'done' ? <><EffortChip label={`DONE · ${effortLabel(t.effort)}`} /><DateTag label={`TODAY ${t.doneAt ?? ''}`} /></> : undefined} />
             ))}
