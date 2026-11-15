@@ -1,15 +1,18 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { Group, Task, effortLabel } from '../state/store'
-import { Doodle, IconBook, IconBriefcase, IconCalendar, IconCheck, IconClock, IconHeart, IconSparkle } from './Icons'
+import { Doodle, IconBook, IconBriefcase, IconCalendar, IconCheck, IconClock, IconFlag, IconHeart, IconList, IconSparkle } from './Icons'
 
-export const groupVar = (g: Group) => ({ bg: `var(--group-${g}-bg)`, strong: `var(--group-${g}-strong)`, text: `var(--group-${g}-text)` })
-const groupIcon = { work: IconBriefcase, study: IconBook, personal: IconHeart, lifestyle: IconSparkle }
+export const groupVar = (g: Group) => g === 'none' ? { bg: 'var(--bg-surface-muted)', strong: 'var(--task-past-icon-bg)', text: 'var(--text-secondary)' } : ({ bg: `var(--group-${g}-bg)`, strong: `var(--group-${g}-strong)`, text: `var(--group-${g}-text)` })
+const groupIcon = { none: IconList, work: IconBriefcase, study: IconBook, personal: IconHeart, lifestyle: IconSparkle }
 
 export function EffortChip({ label }: { label: string }) {
   return <span className="chip"><IconClock size={14} /><span className="label-mono">{label}</span></span>
 }
 export function DateTag({ label }: { label: string }) {
   return <span className="chip"><IconCalendar size={14} /><span className="label-mono">{label}</span></span>
+}
+export function DeadlineTag({ label }: { label: string }) {
+  return <span className="chip chip-deadline"><IconFlag size={14} color="#fff" /><span className="label-mono">{label}</span></span>
 }
 export function ProfileButton({ onClick }: { onClick?: () => void }) {
   return <button className="avatar" onClick={onClick} aria-label="Profile and settings">M</button>
