@@ -1,44 +1,64 @@
+import { useMemo } from 'react'
 import { create } from 'zustand'
 
 export type Group = 'none' | 'work' | 'study' | 'personal' | 'lifestyle'
 export type Task = {
   id: string; title: string; group: Group; effort: number // minutes
-  picked: boolean          // chosen for today's focus
-  status: 'planned' | 'in-focus' | 'done' | 'decision' | 'saved'
-  start?: string           // "HH:MM" for timeline
-  doneAt?: string
-  plannedFor?: string      // e.g. "FRI"
-  due?: string             // external deadline, e.g. "FRI 7"
+  date?: string    // ISO day you plan to do it; none = saved for later
+  due?: string     // ISO external deadline
+  start?: string   // "HH:MM" on the timeline
+  done: boolean; doneOn?: string; doneAt?: string
 }
+export type Status = 'planned' | 'in-focus' | 'done' | 'decision' | 'saved'
+export type TaskView = Task & { status: Status }
 export type Commitment = { id: string; title: string; start: string; end: string; group: Group }
 
-const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
-export const dayLabel = (offset: number) => { const d = new Date(); d.setDate(d.getDate() + offset); return `${DAYS[d.getDay()]} ${d.getDate()}` }
-const sv = (id: string, title: string, group: Group, effort: number, extra: Partial<Task> = {}): Task => ({ id, title, group, effort, picked: false, status: 'saved', ...extra })
-const makeSeed = (): Task[] => [
-  { id: 't1', title: 'Prepare client presentation', group: 'work', effort: 120, picked: true, status: 'in-focus', start: '10:45' },
-  { id: 't2', title: 'Book a yoga class for Thursday', group: 'lifestyle', effort: 15, picked: true, status: 'planned', start: '15:00' },
-  { id: 't3', title: 'Read chapter 3 for Italian class', group: 'study', effort: 15, picked: true, status: 'done', start: '10:25', doneAt: '08:40' },
-  { id: 't4', title: 'Submit weekly timesheet', group: 'work', effort: 15, picked: false, status: 'decision', plannedFor: 'WED' },
-  { id: 't9', title: 'Read chapter 4 for Italian class', group: 'study', effort: 45, picked: false, status: 'decision', plannedFor: 'TUE' },
-  sv('n1', 'Call the landlord', 'none', 15, { due: dayLabel(4) }),
-  sv('n2', 'Send thank-you note to Sara', 'none', 10, { plannedFor: dayLabel(6) }),
-  sv('n3', 'Water the plants', 'none', 10),
-  sv('n4', 'Tidy up the desk', 'none', 30),
-  sv('w1', 'Send invoice to the studio', 'work', 15, { due: dayLabel(5) }),
-  sv('w2', 'Draft brief for the spring project', 'work', 60),
-  sv('w3', "Reply to the client's feedback", 'work', 30),
-  sv('s1', 'Italian theory quiz', 'study', 60),
-  sv('s2', 'Case study outline', 'study', 180),
-  sv('s3', 'Review vocabulary flashcards', 'study', 15),
-  sv('s4', 'Watch lecture recording', 'study', 45),
-  sv('p1', 'Book a dentist appointment', 'personal', 15),
-  sv('p2', 'Reply to landlord', 'personal', 15),
-  sv('l1', 'Plan weekend trip', 'lifestyle', 45),
-  sv('l2', 'Weekend yoga', 'lifestyle', 60),
-  sv('l3', 'Try the new bakery', 'lifestyle', 30),
-]
-const seed = makeSeed()
+// ---- dates (local time, ISO yyyy-mm-dd strings so they compare and persist cleanly)
+const pad = (n: number) => String(n).padStart(2, '0')
+const WD = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+export const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+export const parseIso = (s: string) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d) }
+export const todayIso = () => iso(new Date())
+export const addDays = (s: string, n: number) => { const d = parseIso(s); d.setDate(d.getDate() + n); return iso(d) }
+export const weekday = (s: string) => WD[parseIso(s).getDay()]
+export const dayLabel = (s: string) => {
+  const t = todayIso(); if (s === t) return 'TODAY'; if (s === addDays(t, 1)) return 'TOMORROW'
+  const d = parseIso(s), far = d.getMonth() !== new Date().getMonth()
+  return `${WD[d.getDay()]} ${d.getDate()}${far ? ' ' + d.toLocaleString('en', { month: 'short' }).toUpperCase() : ''}`
+}
+export const dayName = (s: string) => { const t = todayIso(); return s === t ? 'Today' : s === addDays(t, 1) ? 'Tomorrow' : s === addDays(t, -1) ? 'Yesterday' : `${parseIso(s).toLocaleDateString('en', { weekday: 'long' })} ${parseIso(s).getDate()}` }
+export const statusOf = (t: Task, focusId: string | null): Status => {
+  const today = todayIso()
+  return t.done ? 'done' : t.date === today && focusId === t.id ? 'in-focus' : t.date && t.date < today ? 'decision' : t.date ? 'planned' : 'saved'
+}
+
+const makeSeed = (): Task[] => {
+  const T = todayIso(), d = (n: number) => addDays(T, n)
+  const open = (id: string, title: string, group: Group, effort: number, extra: Partial<Task> = {}): Task => ({ id, title, group, effort, done: false, ...extra })
+  const did = (id: string, title: string, group: Group, effort: number, off: number, at = '11:20'): Task => ({ id, title, group, effort, done: true, date: d(off), doneOn: d(off), doneAt: at })
+  return [
+    open('t1', 'Prepare client presentation', 'work', 120, { date: T, start: '10:45' }),
+    open('t2', 'Book a yoga class for Thursday', 'lifestyle', 15, { date: T, start: '15:00' }),
+    { ...did('t3', 'Read chapter 3 for Italian class', 'study', 15, 0, '08:40'), start: '10:25' },
+    open('t4', 'Submit weekly timesheet', 'work', 15, { date: d(-2) }),
+    open('t9', 'Read chapter 4 for Italian class', 'study', 45, { date: d(-3) }),
+    did('d1', 'Outline the case study', 'work', 90, -1), did('d2', 'Italian grammar exercises', 'study', 60, -2), did('d3', 'Reply to client emails', 'work', 30, -2),
+    did('d4', 'Design review prep', 'work', 100, -4), did('d5', 'Call mum', 'personal', 20, -4),
+    did('d6', 'Vocabulary flashcards', 'study', 40, -5), did('d7', 'Gym session', 'lifestyle', 30, -5), did('d8', 'Sort receipts', 'personal', 30, -5),
+    open('n1', 'Call the landlord', 'none', 15, { due: d(4) }),
+    open('n2', 'Send thank-you note to Sara', 'none', 10, { date: d(6) }),
+    open('f1', 'Portfolio review', 'work', 60, { date: d(9), start: '14:00' }),
+    open('f2', 'Case study first draft', 'study', 120, { due: d(12) }),
+    open('n3', 'Water the plants', 'none', 10), open('n4', 'Tidy up the desk', 'none', 30),
+    open('w1', 'Send invoice to the studio', 'work', 15, { due: d(5) }),
+    open('w2', 'Draft brief for the spring project', 'work', 60), open('w3', "Reply to the client's feedback", 'work', 30),
+    open('s1', 'Italian theory quiz', 'study', 60), open('s2', 'Case study outline', 'study', 180),
+    open('s3', 'Review vocabulary flashcards', 'study', 15), open('s4', 'Watch lecture recording', 'study', 45),
+    open('p1', 'Book a dentist appointment', 'personal', 15), open('p2', 'Reply to landlord', 'personal', 15),
+    open('l1', 'Plan weekend trip', 'lifestyle', 45), open('l2', 'Weekend yoga', 'lifestyle', 60), open('l3', 'Try the new bakery', 'lifestyle', 30),
+  ]
+}
+// Sample calendar for today's timeline
 export const commitments: Commitment[] = [
   { id: 'c1', title: 'Team stand-up', start: '09:15', end: '10:00', group: 'work' },
   { id: 'c2', title: 'Lunch', start: '13:00', end: '14:00', group: 'personal' },
@@ -52,70 +72,81 @@ export type Settings = {
 }
 const defaultSettings: Settings = { theme: 'light', reduceMotion: false, showTimer: true, holdNotifications: true, morningPrompt: true, quietHours: '21:00–08:00', workingHours: 'MON–FRI · 9–18', groups: ['work'], custom: false }
 type State = {
-  tasks: Task[]; view: 'focus' | 'timeline'; capacityMin: number
+  tasks: Task[]; view: 'focus' | 'timeline'; day: string // the day shown on the Today tab
+  capacityMin: number; capacityByDay: Record<string, number> // usual capacity + one-day overrides
   settings: Settings; onboarded: boolean
-  capacityToday: { date: string; min: number } | null   // one-day override of the usual capacity
-  setCapacityToday: (m: number | null) => void
-  setSetting: <K extends keyof Settings>(k: K, v: Settings[K]) => void
-  setCapacity: (m: number) => void; setSessionMin: (m: number) => void; finishOnboarding: () => void
   focusId: string | null; focusOpen: boolean; remaining: number; sessionMin: number
+  addTask: (t: Pick<Task, 'title'> & Partial<Task>) => void
+  updateTask: (id: string, patch: Partial<Task>) => void
+  deleteTask: (id: string) => void
+  toggleDone: (id: string) => void
   openFocus: (id: string) => void; closeFocus: () => void; tick: () => void
   applyChoice: (id: string, c: Choice) => void
-  setView: (v: 'focus' | 'timeline') => void
-  toggleDone: (id: string) => void
-  decide: (id: string, to: 'today' | 'later' | 'release') => void
-  addTask: (t: Pick<Task, 'title' | 'group' | 'effort'> & Partial<Pick<Task, 'plannedFor' | 'due' | 'status'>>) => void
-  reset: () => void
+  setView: (v: 'focus' | 'timeline') => void; setDay: (d: string) => void
+  setCapacity: (m: number) => void; setCapacityFor: (day: string, m: number | null) => void
+  setSessionMin: (m: number) => void
+  setSetting: <K extends keyof Settings>(k: K, v: Settings[K]) => void
+  finishOnboarding: () => void; reset: () => void
 }
-const load = (): Partial<State> => { try { return JSON.parse(localStorage.getItem('tend-demo-2') || '{}') } catch { return {} } }
-const persist = (s: State) => { try { localStorage.setItem('tend-demo-2', JSON.stringify({ tasks: s.tasks, view: s.view, capacityMin: s.capacityMin, capacityToday: s.capacityToday, sessionMin: s.sessionMin, settings: s.settings, onboarded: s.onboarded })) } catch { /* ignore */ } }
+const KEY = 'tend-demo-3'
+const load = (): Partial<State> => { try { return JSON.parse(localStorage.getItem(KEY) || '{}') } catch { return {} } }
+const persist = (s: State) => { try { localStorage.setItem(KEY, JSON.stringify({ tasks: s.tasks, view: s.view, capacityMin: s.capacityMin, capacityByDay: s.capacityByDay, sessionMin: s.sessionMin, settings: s.settings, onboarded: s.onboarded, focusId: s.focusId })) } catch { /* ignore */ } }
 const saved = load()
+const fresh = !saved.tasks
+const nowTime = () => new Date().toTimeString().slice(0, 5)
 
-export const useTend = create<State>((set, get) => ({
-  tasks: (saved.tasks as Task[]) ?? seed, view: (saved.view as State['view']) ?? 'focus', capacityMin: (saved.capacityMin as number) ?? 210,
-  focusId: 't1', focusOpen: false, remaining: 24 * 60 + 18, sessionMin: (saved.sessionMin as number) ?? 45,
-  settings: { ...defaultSettings, ...(saved.settings as Partial<Settings>) }, onboarded: !!saved.onboarded,
-  setSetting: (k, v) => { set((s) => ({ settings: { ...s.settings, [k]: v } })); persist(get()) },
-  capacityToday: (saved.capacityToday as State['capacityToday']) ?? null,
-  setCapacityToday: (m) => { set({ capacityToday: m === null ? null : { date: new Date().toDateString(), min: m } }); persist(get()) },
-  setCapacity: (capacityMin) => { set({ capacityMin }); persist(get()) },
-  setSessionMin: (sessionMin) => { set({ sessionMin }); persist(get()) },
-  finishOnboarding: () => { set({ onboarded: true }); persist(get()) },
-  openFocus: (id) => {
-    const cur = get()
-    const fresh = cur.focusId !== id
-    set({ focusId: id, focusOpen: true, remaining: fresh ? cur.sessionMin * 60 : cur.remaining,
-      tasks: cur.tasks.map((t) => t.id === id ? { ...t, picked: true, status: 'in-focus' as const } : t.status === 'in-focus' ? { ...t, status: 'planned' as const } : t) })
-    persist(get())
-  },
-  closeFocus: () => set({ focusOpen: false }),
-  tick: () => set((s) => ({ remaining: Math.max(0, s.remaining - 1) })),
-  applyChoice: (id, c) => {
-    set((s) => {
-      const t = s.tasks.find((x) => x.id === id); if (!t) return s
-      const rest = s.tasks.filter((x) => x.id !== id)
+export const useTend = create<State>((set, get) => {
+  const save = (fn: (s: State) => Partial<State>) => { set(fn); persist(get()) }
+  const patch = (id: string, fn: (t: Task) => Task) => (s: State) => ({ tasks: s.tasks.map((t) => t.id === id ? fn(t) : t) })
+  return {
+    tasks: saved.tasks ?? makeSeed(), view: saved.view ?? 'focus', day: todayIso(),
+    capacityMin: saved.capacityMin ?? 210, capacityByDay: saved.capacityByDay ?? {},
+    settings: { ...defaultSettings, ...saved.settings }, onboarded: !!saved.onboarded,
+    focusId: fresh ? 't1' : saved.focusId ?? null, focusOpen: false, sessionMin: saved.sessionMin ?? 45,
+    remaining: fresh ? 24 * 60 + 18 : (saved.sessionMin ?? 45) * 60,
+    addTask: (t) => save((s) => ({ tasks: [...s.tasks, { group: 'none', effort: 30, done: false, ...t, id: 'u' + Date.now() }] })),
+    updateTask: (id, p) => save(patch(id, (t) => ({ ...t, ...p }))),
+    deleteTask: (id) => save((s) => ({ tasks: s.tasks.filter((t) => t.id !== id), focusId: s.focusId === id ? null : s.focusId, focusOpen: s.focusId === id ? false : s.focusOpen })),
+    toggleDone: (id) => save((s) => ({
+      ...patch(id, (t) => t.done ? { ...t, done: false, doneOn: undefined, doneAt: undefined } : { ...t, done: true, date: t.date ?? todayIso(), doneOn: todayIso(), doneAt: nowTime() })(s),
+      focusId: s.focusId === id ? null : s.focusId,
+    })),
+    openFocus: (id) => save((s) => ({
+      ...patch(id, (t) => ({ ...t, date: todayIso(), done: false }))(s),
+      focusId: id, focusOpen: true, remaining: s.focusId === id ? s.remaining : s.sessionMin * 60,
+    })),
+    closeFocus: () => set({ focusOpen: false }),
+    tick: () => set((s) => ({ remaining: Math.max(0, s.remaining - 1) })),
+    applyChoice: (id, c) => save((s) => {
+      const t = s.tasks.find((x) => x.id === id); if (!t) return {}
       const half = Math.max(15, Math.round(t.effort / 2 / 15) * 15)
-      let next: Task[] = s.tasks
-      if (c === 'continue') next = s.tasks.map((x) => x.id === id ? { ...x, status: 'planned' } : x)
-      if (c === 'rescope') next = s.tasks.map((x) => x.id === id ? { ...x, status: 'planned', effort: half } : x)
-      if (c === 'split') next = [...rest, { ...t, id: id + 'a', title: t.title + ' · part 1', effort: half, status: 'planned' as const }, { ...t, id: id + 'b', title: t.title + ' · part 2', effort: half, picked: false, status: 'saved' as const }]
-      if (c === 'defer') next = s.tasks.map((x) => x.id === id ? { ...x, picked: false, status: 'saved', plannedFor: undefined } : x)
-      if (c === 'release') next = rest
-      return { tasks: next, focusId: s.focusId === id ? null : s.focusId }
-    })
-    persist(get())
-  },
-  setView: (view) => { set({ view }); persist(get()) },
-  toggleDone: (id) => { set((s) => ({ tasks: s.tasks.map((t) => t.id !== id ? t : t.status === 'done' ? { ...t, status: 'planned', doneAt: undefined } : { ...t, status: 'done', doneAt: new Date().toTimeString().slice(0, 5) }) })); persist(get()) },
-  decide: (id, to) => { set((s) => ({ tasks: s.tasks.flatMap((t) => t.id !== id ? [t] : to === 'release' ? [] : to === 'today' ? [{ ...t, picked: true, status: 'planned' as const, plannedFor: undefined }] : [{ ...t, status: 'saved' as const, plannedFor: undefined }]) })); persist(get()) },
-  addTask: (t) => { set((s) => ({ tasks: [...s.tasks, { status: 'saved' as const, ...t, id: 'n' + Date.now(), picked: false }] })); persist(get()) },
-  reset: () => { set({ tasks: makeSeed(), view: 'focus', focusId: 't1', remaining: 24 * 60 + 18 }); persist(get()) },
-}))
+      const rest = s.tasks.filter((x) => x.id !== id)
+      const tasks = c === 'continue' ? s.tasks
+        : c === 'rescope' ? s.tasks.map((x) => x.id === id ? { ...x, effort: half } : x)
+        : c === 'split' ? [...rest, { ...t, title: t.title + ' · part 1', effort: half }, { ...t, id: id + 'b', title: t.title + ' · part 2', effort: half, date: undefined, start: undefined }]
+        : c === 'defer' ? s.tasks.map((x) => x.id === id ? { ...x, date: addDays(todayIso(), 1), start: undefined } : x)
+        : rest
+      return { tasks, focusId: s.focusId === id ? null : s.focusId }
+    }),
+    setView: (view) => save(() => ({ view })),
+    setDay: (day) => set({ day }),
+    setCapacity: (capacityMin) => save(() => ({ capacityMin })),
+    setCapacityFor: (day, m) => save((s) => { const next = { ...s.capacityByDay }; if (m === null) delete next[day]; else next[day] = m; return { capacityByDay: next } }),
+    setSessionMin: (sessionMin) => save(() => ({ sessionMin })),
+    setSetting: (k, v) => save((s) => ({ settings: { ...s.settings, [k]: v } })),
+    finishOnboarding: () => save(() => ({ onboarded: true })),
+    reset: () => save(() => ({ tasks: makeSeed(), view: 'focus', day: todayIso(), focusId: 't1', remaining: 24 * 60 + 18, capacityByDay: {} })),
+  }
+})
+/** Tasks with their status worked out from dates, done state and the current focus. */
+export function useTasks(): TaskView[] {
+  const tasks = useTend((s) => s.tasks), focusId = useTend((s) => s.focusId)
+  return useMemo(() => tasks.map((t) => ({ ...t, status: statusOf(t, focusId) })), [tasks, focusId])
+}
+export const capacityFor = (s: Pick<State, 'capacityMin' | 'capacityByDay'>, day: string) => s.capacityByDay[day] ?? s.capacityMin
+// Capacity counts everything planned for the day, finished or not: time already spent stays spent
+export const usedOn = (tasks: Task[], day: string) => tasks.filter((t) => t.date === day).reduce((a, t) => a + t.effort, 0)
 export const fmtDur = (m: number) => { const h = Math.floor(m / 60), r = m % 60; return h && r ? `${h}h ${r}m` : h ? `${h}h` : `${r}m` }
 export const effortLabel = (m: number) => (m >= 60 && m % 60 === 0 ? `${m / 60}H` : `${m} MIN`)
 export const toMin = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m }
 export const fromMin = (n: number) => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`
-// Today's capacity: the one-day override if it was set today, otherwise the usual amount
-export const todayCapacity = (s: { capacityMin: number; capacityToday: { date: string; min: number } | null }) => s.capacityToday?.date === new Date().toDateString() ? s.capacityToday.min : s.capacityMin
-// Capacity counts everything chosen for today, finished or not: time already spent stays spent
-export const usedToday = (tasks: Task[]) => tasks.filter((t) => t.picked).reduce((a, t) => a + t.effort, 0)

@@ -1,124 +1,113 @@
-import { useMemo, useState } from 'react'
-import { CapacityBar, DateTag, DayPill, EffortChip, PageHeader, SectionHeader, TaskCard, ViewSwitch, groupVar } from '../components/ui'
-import { IconCalendar } from '../components/Icons'
-import { CapacitySheet, DecisionSheet } from '../components/Overlays'
-import { Task, commitments, effortLabel, fmtDur, fromMin, toMin, todayCapacity, usedToday, useTend } from '../state/store'
+import { useState } from 'react'
+import { CapacityBar, DayPill, PageHeader, SectionHeader, TaskCard, ViewSwitch, groupVar } from '../components/ui'
+import { IconCalendar, IconChevronLeft, IconChevronRight, IconPlus } from '../components/Icons'
+import { CapacitySheet, TaskSheet } from '../components/Overlays'
+import { TaskView, addDays, capacityFor, commitments, dayName, effortLabel, fmtDur, fromMin, iso, parseIso, toMin, todayIso, usedOn, useTasks, useTend, weekday } from '../state/store'
 
-const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
-function useWeek() {
-  return useMemo(() => {
-    const now = new Date(); const start = new Date(now); start.setDate(now.getDate() - now.getDay())
-    return Array.from({ length: 7 }, (_, i) => { const d = new Date(start); d.setDate(start.getDate() + i); return { day: DAYS[i], date: d.getDate(), isToday: d.toDateString() === now.toDateString(), planned: i === 2 || i === 4 } })
-  }, [])
-}
-
-export default function Today({ onProfile }: { onProfile: () => void }) {
-  const { tasks, view, setView, toggleDone, openFocus } = useTend()
-  const week = useWeek()
-  const [sheet, setSheet] = useState<Task | null>(null)
-  const [showAll, setShowAll] = useState(false)
-  const picked = tasks.filter((t) => t.picked)
-  const used = usedToday(tasks), total = useTend(todayCapacity)
+export default function Today({ onProfile, onAdd }: { onProfile: () => void; onAdd: (day: string) => void }) {
+  const { view, setView, toggleDone, openFocus, day, setDay, remaining } = useTend()
+  const tasks = useTasks()
+  const [sheet, setSheet] = useState<string | null>(null)
   const [capOpen, setCapOpen] = useState(false)
-  const decisions = tasks.filter((t) => t.status === 'decision')
+  const today = todayIso(), isToday = day === today, past = day < today
+  const start = addDays(day, -parseIso(day).getDay())
+  const week = Array.from({ length: 7 }, (_, i) => addDays(start, i))
+  const mine = tasks.filter((t) => t.date === day)
+  const order = { 'in-focus': 0, planned: 1, decision: 1, saved: 1, done: 2 }
+  const list = [...mine].sort((a, b) => order[a.status] - order[b.status] || (a.start ?? '99').localeCompare(b.start ?? '99'))
+  const used = usedOn(tasks, day), total = useTend((s) => capacityFor(s, day))
+  const waiting = tasks.filter((t) => t.status === 'decision')
   const later = tasks.filter((t) => t.status === 'saved').length
-  const planned = tasks.filter((t) => !t.picked && t.status === 'planned')
-  const today = week.find((w) => w.isToday)!
+  const name = dayName(day)
+  const open = (t: TaskView) => t.status === 'in-focus' ? openFocus(t.id) : setSheet(t.id)
+  const card = (t: TaskView) => <TaskCard key={t.id} task={t} onToggle={() => toggleDone(t.id)} onOpen={() => open(t)} label={t.status === 'in-focus' ? `● In focus · ${Math.ceil(remaining / 60)} min left` : undefined} />
 
   return (
     <div className="screen">
-      <PageHeader title="Today" onProfile={onProfile} />
+      <PageHeader title={name} onProfile={onProfile} extra={!isToday && <button className="pill-btn label-mono" style={{ marginRight: 'auto' }} onClick={() => setDay(today)}>← Back to today</button>} />
       <ViewSwitch value={view} onChange={setView} />
-      <div className="week">{week.map((w) => <DayPill key={w.day} day={w.day} date={w.date} planned={w.planned} selected={w.isToday} />)}</div>
+      <div className="week-nav">
+        <button className="week-step" aria-label="Previous week" onClick={() => setDay(addDays(day, -7))}><IconChevronLeft size={18} /></button>
+        <div className="week">{week.map((d) => <DayPill key={d} day={weekday(d)} date={parseIso(d).getDate()} planned={tasks.some((t) => t.date === d && !t.done)} selected={d === day} today={d === today} onClick={() => setDay(d)} />)}</div>
+        <button className="week-step" aria-label="Next week" onClick={() => setDay(addDays(day, 7))}><IconChevronRight size={18} /></button>
+      </div>
 
       {view === 'focus' ? (
         <>
-          <CapacityBar used={used} total={total} fmt={fmtDur} onEdit={() => setCapOpen(true)} />
+          {!past && <CapacityBar title={isToday ? "Today's capacity" : `Capacity for ${name}`} used={used} total={total} fmt={fmtDur} onEdit={() => setCapOpen(true)} />}
           <section className="stack">
-            <SectionHeader title="Focus for today" aside={`${picked.length} picked`} />
-            {picked.map((t) => (
-              <TaskCard key={t.id} task={t} onToggle={() => toggleDone(t.id)} onOpen={t.status === 'in-focus' ? () => openFocus(t.id) : t.status === 'planned' ? () => openFocus(t.id) : undefined}
-                label={t.status === 'in-focus' ? '● In focus · 24 min left' : undefined}
-                meta={t.status === 'done' ? <><EffortChip label={`DONE · ${effortLabel(t.effort)}`} /><DateTag label={`TODAY ${t.doneAt ?? ''}`} /></> : undefined} />
-            ))}
-            <button className="link" onClick={() => setShowAll(!showAll)}>{showAll ? 'Hide other planned tasks ↑' : 'Show all tasks planned for today ↓'}</button>
-            {showAll && (planned.length ? planned.map((t) => <TaskCard key={t.id} task={t} onToggle={() => toggleDone(t.id)} />) : <p className="footnote muted">Nothing else is planned for today.</p>)}
+            <SectionHeader title={isToday ? 'Focus for today' : past ? `From ${name}` : `Planned for ${name}`} aside={mine.length ? `${mine.length} ${past ? (mine.length === 1 ? 'task' : 'tasks') : 'picked'}` : undefined} />
+            {list.length ? list.map(card) : <p className="footnote muted">{past ? 'Nothing was planned that day.' : isToday ? 'Nothing picked yet. Add something small, or bring one over from Plan.' : 'Nothing planned yet. This day is wide open.'}</p>}
+            {!past && <button className="add-row callout" onClick={() => onAdd(day)}><IconPlus size={18} /> Add a task for {isToday ? 'today' : name}</button>}
           </section>
-          {decisions.length > 0 && (
+          {isToday && waiting.length > 0 && (
             <section className="stack">
               <SectionHeader title="Waiting for a decision" />
-              {decisions.map((t) => (
-                <TaskCard key={t.id} task={t} onOpen={() => setSheet(t)} onToggle={() => setSheet(t)} />
-              ))}
+              {waiting.map((t) => <TaskCard key={t.id} task={t} onOpen={() => setSheet(t.id)} onToggle={() => setSheet(t.id)} />)}
             </section>
           )}
-          <p className="callout muted">{later} more tasks are saved for later, out of sight.</p>
+          {isToday && <p className="callout muted">{later} more {later === 1 ? 'task is' : 'tasks are'} saved for later, out of sight.</p>}
         </>
       ) : (
-        <Timeline onDecide={setSheet} />
+        <Timeline day={day} tasks={mine} onOpen={open} />
       )}
 
-      {capOpen && <CapacitySheet onClose={() => setCapOpen(false)} />}
-      {sheet && <DecisionSheet task={sheet} onClose={() => setSheet(null)} />}
-      <span hidden>{today.date}</span>
+      {capOpen && <CapacitySheet day={day} onClose={() => setCapOpen(false)} />}
+      {sheet && <TaskSheet id={sheet} onClose={() => setSheet(null)} />}
     </div>
   )
 }
 
-const T0 = 9 * 60, PX = 72 / 60 // 72px per hour
-function Timeline({ onDecide }: { onDecide: (t: Task) => void }) {
-  const { tasks } = useTend()
+const T0 = 9 * 60, T1 = 18 * 60, PX = 72 / 60 // 72px per hour
+function Timeline({ day, tasks, onOpen }: { day: string; tasks: TaskView[]; onOpen: (t: TaskView) => void }) {
+  const remaining = useTend((s) => s.remaining)
+  const isToday = day === iso(new Date())
   const nowM = (() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes() })()
   const y = (m: number) => (m - T0) * PX + 6
   const hours = Array.from({ length: 10 }, (_, i) => 9 + i)
-  const decisions = tasks.filter((t) => t.status === 'decision')
-  const placed = tasks.filter((t) => t.picked && t.start)
-  const nowVisible = nowM >= T0 && nowM <= 18 * 60
+  const placed = tasks.filter((t) => t.start && toMin(t.start) >= T0 && toMin(t.start) < T1)
+  const loose = tasks.filter((t) => !placed.includes(t) && !t.done)
+  const nowVisible = isToday && nowM >= T0 && nowM <= T1
   return (
     <>
-      {decisions.length > 0 && (
+      {loose.length > 0 && (
         <section className="stack">
           <SectionHeader title="No time chosen" mono />
-          {decisions.map((t) => <TaskCard key={t.id} task={t} onOpen={() => onDecide(t)} onToggle={() => onDecide(t)} />)}
+          {loose.map((t) => <TaskCard key={t.id} task={t} onOpen={() => onOpen(t)} onToggle={() => onOpen(t)} />)}
         </section>
       )}
       <section className="stack">
-        <SectionHeader title="Today by the hour" aside="9:00–18:00" />
+        <SectionHeader title={isToday ? 'Today by the hour' : 'By the hour'} aside="9:00–18:00" />
         <div className="timeline" style={{ height: 662 }}>
           {hours.map((h) => (
             <div key={h}><span className="label-mono-sm hour" style={{ top: y(h * 60) - 6 }}>{h}:00</span><i className="hline" style={{ top: y(h * 60) }} /></div>
           ))}
-          {commitments.map((c) => {
-            const h = (toMin(c.end) - toMin(c.start)) * PX - 4
-            return (
-              <div key={c.id} className="commit" style={{ top: y(toMin(c.start)) + (c.group === 'work' ? 0 : 0), height: h, background: c.group === 'work' ? 'var(--group-work-bg)' : 'var(--bg-surface)' }}>
-                <IconCalendar size={16} />
-                <div><span className="label-mono-sm" style={{ color: c.group === 'work' ? 'var(--group-work-text)' : 'var(--text-secondary)' }}>{c.start}–{c.end}</span><p className="footnote">{c.title}</p></div>
-              </div>
-            )
-          })}
+          {isToday && commitments.map((c) => (
+            <div key={c.id} className="commit" style={{ top: y(toMin(c.start)), height: (toMin(c.end) - toMin(c.start)) * PX - 4, background: c.group === 'work' ? 'var(--group-work-bg)' : 'var(--bg-surface)' }}>
+              <IconCalendar size={16} />
+              <div><span className="label-mono-sm" style={{ color: c.group === 'work' ? 'var(--group-work-text)' : 'var(--text-secondary)' }}>{c.start}–{c.end}</span><p className="footnote">{c.title}</p></div>
+            </div>
+          ))}
           {placed.map((t) => {
             const s = toMin(t.start!); const g = groupVar(t.group); const done = t.status === 'done', focus = t.status === 'in-focus'
-            const h = Math.max(32, t.effort * PX - 4)
-            const range = `${fromMin(s)}–${fromMin(s + t.effort)}`
+            const h = Math.max(32, Math.min(t.effort, T1 - s) * PX - 4), short = effortLabel(t.effort).replace(' MIN', 'M')
             return (
-              <div key={t.id} className={`block ${done ? 'bd' : ''}`} style={{ top: y(s), height: h, background: done ? 'var(--task-past-bg)' : focus ? g.strong : g.bg }}>
+              <button key={t.id} className="block" onClick={() => onOpen(t)} style={{ top: y(s), height: h, background: done ? 'var(--task-past-bg)' : focus ? g.strong : g.bg }}>
                 {focus ? (<>
-                  <span className="label-mono-sm" style={{ color: 'var(--text-primary)' }}>● IN FOCUS · 24 MIN LEFT</span>
+                  <span className="label-mono-sm" style={{ color: 'var(--text-primary)' }}>● IN FOCUS · {Math.ceil(remaining / 60)} MIN LEFT</span>
                   <p className="headline row-title">{t.title}</p>
-                  <span className="label-mono-sm" style={{ color: 'var(--text-secondary)' }}>{range} · {effortLabel(t.effort).replace(' MIN', 'M')}</span>
+                  <span className="label-mono-sm" style={{ color: 'var(--text-secondary)' }}>{fromMin(s)}–{fromMin(s + t.effort)} · {short}</span>
                 </>) : (
                   <div className="row"><i style={{ background: done ? 'var(--task-past-icon-bg)' : g.strong }} /><p className="callout row-title" style={{ color: done ? 'var(--text-muted)' : undefined }}>{t.title}</p>
-                    <span className="label-mono-sm" style={{ color: done ? 'var(--text-muted)' : 'var(--text-secondary)' }}>{done ? `DONE · ${t.doneAt ?? ''}` : `${t.start} · ${effortLabel(t.effort).replace(' MIN', 'M')}`}</span></div>
+                    <span className="label-mono-sm" style={{ color: done ? 'var(--text-muted)' : 'var(--text-secondary)' }}>{done ? `DONE · ${t.doneAt ?? ''}` : `${t.start} · ${short}`}</span></div>
                 )}
-              </div>
+              </button>
             )
           })}
-          <div className="free" style={{ top: y(15 * 60 + 30), height: 86 }}><span className="label-mono-sm">1H 15M FREE · FOR WHATEVER COMES UP</span></div>
           {nowVisible && <div className="now" style={{ top: y(nowM) - 6 }}><span className="label-mono-sm">{fromMin(nowM)}</span><i /><b /></div>}
         </div>
+        <p className="footnote muted">Tap a task to give it a time of day. Calendar events here are samples.</p>
       </section>
     </>
   )
 }
-

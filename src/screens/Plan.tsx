@@ -1,24 +1,28 @@
 import { useState } from 'react'
 import { GROUP_LABEL, PageHeader, SectionHeader, Sticky, TaskCard, groupVar } from '../components/ui'
 import { IconSearch } from '../components/Icons'
-import { DecisionSheet } from '../components/Overlays'
-import { Group, Task, useTend } from '../state/store'
+import { TaskSheet } from '../components/Overlays'
+import { Group, TaskView, todayIso, useTasks } from '../state/store'
 
 const GROUPS: Exclude<Group, 'none'>[] = ['work', 'study', 'personal', 'lifestyle']
 
 export default function Plan({ onProfile }: { onProfile: () => void }) {
-  const tasks = useTend((s) => s.tasks)
+  const tasks = useTasks()
   const [q, setQ] = useState('')
   const [open, setOpen] = useState<Group | null>('work')
   const [allPast, setAllPast] = useState(false)
-  const [sheet, setSheet] = useState<Task | null>(null)
-  const saved = tasks.filter((t) => t.status === 'saved')
-  const loose = saved.filter((t) => t.group === 'none')
-  const coming = loose.filter((t) => t.due || t.plannedFor), whenever = loose.filter((t) => !t.due && !t.plannedFor)
-  const past = tasks.filter((t) => t.status === 'decision')
-  const card = (t: Task) => <TaskCard key={t.id} task={t} onOpen={() => setSheet(t)} onToggle={() => setSheet(t)} />
+  const [sheet, setSheet] = useState<string | null>(null)
+  const today = todayIso()
+  const live = tasks.filter((t) => !t.done)
+  // Coming up: anything with a future day, plus ungrouped tasks that carry a deadline
+  const isComing = (t: TaskView) => (!!t.date && t.date > today) || (!t.date && t.group === 'none' && !!t.due)
+  const coming = live.filter(isComing).sort((a, b) => (a.date ?? a.due!).localeCompare(b.date ?? b.due!))
+  const undated = live.filter((t) => !t.date && !isComing(t))
+  const whenever = undated.filter((t) => t.group === 'none')
+  const past = live.filter((t) => t.status === 'decision')
+  const card = (t: TaskView) => <TaskCard key={t.id} task={t} onOpen={() => setSheet(t.id)} onToggle={() => setSheet(t.id)} />
   const query = q.trim().toLowerCase()
-  const hits = query ? [...saved, ...past].filter((t) => t.title.toLowerCase().includes(query) || GROUP_LABEL[t.group].toLowerCase().includes(query)) : []
+  const hits = query ? live.filter((t) => t.title.toLowerCase().includes(query) || GROUP_LABEL[t.group].toLowerCase().includes(query)) : []
 
   return (
     <div className="screen roomy">
@@ -45,7 +49,7 @@ export default function Plan({ onProfile }: { onProfile: () => void }) {
         {whenever.length > 0 && <section className="sec"><SectionHeader title="Whenever" />{whenever.map(card)}</section>}
         <section className="sec">
           {GROUPS.map((g) => {
-            const list = saved.filter((t) => t.group === g); if (!list.length) return null
+            const list = undated.filter((t) => t.group === g); if (!list.length) return null
             const count = `${list.length} ${list.length === 1 ? 'TASK' : 'TASKS'}`, dot = <i className="gdot" style={{ background: groupVar(g).strong }} />
             return open === g ? (
               <div key={g} className="sec">
@@ -64,8 +68,9 @@ export default function Plan({ onProfile }: { onProfile: () => void }) {
             {(allPast ? past : past.slice(0, 1)).map(card)}
           </section>
         )}
+        {live.length === 0 && <p className="callout muted">Nothing here yet. Tap + to add your first task.</p>}
       </>)}
-      {sheet && <DecisionSheet task={sheet} onClose={() => setSheet(null)} />}
+      {sheet && <TaskSheet id={sheet} onClose={() => setSheet(null)} />}
     </div>
   )
 }

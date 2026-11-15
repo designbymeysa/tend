@@ -1,77 +1,77 @@
+import { useState } from 'react'
 import { PageHeader, groupVar } from '../components/ui'
-import { IconCalendar, IconFlag } from '../components/Icons'
-import { Group } from '../state/store'
+import { IconCalendar, IconChevronLeft, IconChevronRight, IconFlag } from '../components/Icons'
+import { TaskSheet } from '../components/Overlays'
+import { dayLabel, effortLabel, iso, todayIso, useTasks } from '../state/store'
 
-const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
-// Sample fixed dates, placed relative to today so the demo always has something ahead.
-const FIXED = [
-  { off: 5, due: true, title: 'Submit weekly timesheet (repeats Fridays)' },
-  { off: 5, due: true, title: 'Send presentation to client' },
-  { off: 9, due: false, time: '14:00', title: 'Portfolio review' },
-  { off: 12, due: true, title: 'Case study first draft' },
-]
-const PLANNED = [1, 2, 3, 7, 8, 9]
-const FLEX: { group: Exclude<Group, 'none'>; title: string; meta: string }[] = [
-  { group: 'work', title: 'Case study outline', meta: '3H' }, { group: 'study', title: 'Italian theory quiz', meta: '1H' },
-  { group: 'personal', title: 'Book dentist', meta: '30M' }, { group: 'lifestyle', title: 'Weekend yoga', meta: '1H' },
-]
-
-export default function Month({ onProfile }: { onProfile: () => void }) {
-  const now = new Date(), y = now.getFullYear(), m = now.getMonth()
-  const at = (off: number) => new Date(y, m, now.getDate() + off)
-  const inMonth = (d: Date) => d.getMonth() === m
-  const fixed = FIXED.map((f) => ({ ...f, date: at(f.off) })).filter((f) => inMonth(f.date))
-  const deadlines = new Set(fixed.filter((f) => f.due).map((f) => f.date.getDate()))
-  const planned = new Set([...PLANNED.map(at), ...fixed.filter((f) => !f.due).map((f) => f.date)].filter(inMonth).map((d) => d.getDate()))
-  const lead = (new Date(y, m, 1).getDay() + 6) % 7
+export default function Month({ onProfile, onOpenDay }: { onProfile: () => void; onOpenDay: (day: string) => void }) {
+  const tasks = useTasks().filter((t) => !t.done)
+  const [off, setOff] = useState(0) // months away from the current one
+  const [sheet, setSheet] = useState<string | null>(null)
+  const now = new Date(), first = new Date(now.getFullYear(), now.getMonth() + off, 1), y = first.getFullYear(), m = first.getMonth()
+  const today = todayIso(), prefix = iso(first).slice(0, 7), here = (d?: string) => !!d && d.startsWith(prefix)
+  const deadlines = new Set(tasks.map((t) => t.due).filter(here)), planned = new Set(tasks.map((t) => t.date).filter(here))
+  const lead = (first.getDay() + 6) % 7
   const weeks = Array.from({ length: 6 }, (_, w) => Array.from({ length: 7 }, (_, d) => new Date(y, m, 1 - lead + w * 7 + d)))
+  const from = off === 0 ? today : iso(first)
+  // Fixed: has a deadline or a set time. Flexible: planned for a day this month, nothing pinning it down.
+  const fixed = tasks.filter((t) => (here(t.due) && t.due! >= from) || (here(t.date) && t.date! > today && t.date! >= from && !!t.start)).sort((a, b) => (a.due ?? a.date!).localeCompare(b.due ?? b.date!))
+  const flexible = tasks.filter((t) => here(t.date) && t.date! >= from && !fixed.includes(t)).sort((a, b) => a.date!.localeCompare(b.date!))
 
   return (
     <div className="screen">
-      <PageHeader title={now.toLocaleString('en', { month: 'long' })} onProfile={onProfile} />
+      <PageHeader title={first.toLocaleString('en', { month: 'long' }) + (y !== now.getFullYear() ? ` ${y}` : '')} onProfile={onProfile} extra={
+        <div className="month-nav">
+          <button className="week-step" aria-label="Previous month" onClick={() => setOff(off - 1)}><IconChevronLeft size={18} /></button>
+          {off !== 0 && <button className="pill-btn label-mono" onClick={() => setOff(0)}>This month</button>}
+          <button className="week-step" aria-label="Next month" onClick={() => setOff(off + 1)}><IconChevronRight size={18} /></button>
+        </div>} />
       <div className="mgrid" role="grid" aria-label="Month at a glance">
         <div className="mrow" aria-hidden>{['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <span key={i} className="wd label-mono-sm">{d}</span>)}</div>
         {weeks.map((week, w) => (
           <div key={w} className="mrow" role="row">
             {week.map((d) => {
-              const out = !inMonth(d), n = d.getDate(), today = !out && n === now.getDate()
-              const flag = !out && deadlines.has(n), dot = !out && (today || planned.has(n))
+              const id = iso(d), out = d.getMonth() !== m, isToday = id === today, flag = !out && deadlines.has(id), dot = !out && planned.has(id)
               return (
-                <div key={d.toDateString()} role="gridcell" className={`mcell callout ${today ? 'today' : ''} ${out ? 'out' : ''}`} aria-current={today ? 'date' : undefined}
-                  aria-label={`${d.toLocaleString('en', { month: 'long' })} ${n}${today ? ', today' : ''}${flag ? ', deadline' : dot ? ', focus planned' : ''}`}>
-                  <span>{n}</span>
+                <button key={id} role="gridcell" className={`mcell callout ${isToday ? 'today' : ''} ${out ? 'out' : ''}`} aria-current={isToday ? 'date' : undefined} onClick={() => onOpenDay(id)}
+                  aria-label={`${d.toLocaleString('en', { month: 'long' })} ${d.getDate()}${isToday ? ', today' : ''}${flag ? ', deadline' : ''}${dot ? ', tasks planned' : ''}. Open this day`}>
+                  <span>{d.getDate()}</span>
                   <span className="mk">{flag ? <IconFlag size={12} /> : dot ? <i className="dot" /> : null}</span>
-                </div>
+                </button>
               )
             })}
           </div>
         ))}
       </div>
+      <p className="footnote muted" style={{ textAlign: 'center', marginTop: -8 }}>Tap a day to open it and plan it.</p>
       <section className="sec" style={{ gap: 8 }}>
         <span className="label-mono" style={{ color: 'var(--text-secondary)' }}>FIXED DATES THIS MONTH</span>
-        {fixed.length ? fixed.map((f, i) => (
-          <div key={i} className="fixed">
+        {fixed.length ? fixed.map((t) => (
+          <button key={t.id} className="fixed" onClick={() => setSheet(t.id)}>
             <IconCalendar size={16} />
             <div className="fixed-text">
-              {f.due
-                ? <span className="chip chip-deadline"><IconFlag size={14} color="#fff" /><span className="label-mono">DUE {DAYS[f.date.getDay()]} {f.date.getDate()}</span></span>
-                : <span className="chip"><IconCalendar size={14} /><span className="label-mono">PLANNED {DAYS[f.date.getDay()]} {f.date.getDate()} · {f.time}</span></span>}
-              <p className="footnote">{f.title}</p>
+              {t.due && here(t.due)
+                ? <span className="chip chip-deadline"><IconFlag size={14} color="#fff" /><span className="label-mono">DUE {dayLabel(t.due)}</span></span>
+                : <span className="chip"><IconCalendar size={14} /><span className="label-mono">PLANNED {dayLabel(t.date!)} · {t.start}</span></span>}
+              <p className="footnote">{t.title}</p>
             </div>
-          </div>
-        )) : <p className="footnote muted">Nothing fixed for the rest of this month.</p>}
+          </button>
+        )) : <p className="footnote muted">No deadlines or timed tasks ahead this month.</p>}
       </section>
       <section className="sec" style={{ gap: 8 }}>
         <span className="label-mono" style={{ color: 'var(--text-secondary)' }}>FLEXIBLE THIS MONTH</span>
-        <div className="tpills">
-          {FLEX.map((t) => (
-            <div key={t.title} className="tpill" style={{ background: groupVar(t.group).bg }}>
-              <div className="tpill-row"><i className="gdot" style={{ background: groupVar(t.group).strong, marginTop: 5 }} /><p className="footnote">{t.title}</p></div>
-              <span className="label-mono-sm" style={{ color: 'var(--text-secondary)' }}>{t.meta}</span>
-            </div>
-          ))}
-        </div>
+        {flexible.length ? (
+          <div className="tpills">
+            {flexible.map((t) => (
+              <button key={t.id} className="tpill" style={{ background: groupVar(t.group).bg }} onClick={() => setSheet(t.id)}>
+                <div className="tpill-row"><i className="gdot" style={{ background: groupVar(t.group).strong, marginTop: 5 }} /><p className="footnote">{t.title}</p></div>
+                <span className="label-mono-sm" style={{ color: 'var(--text-secondary)' }}>{dayLabel(t.date!)} · {effortLabel(t.effort).replace(' MIN', 'M')}</span>
+              </button>
+            ))}
+          </div>
+        ) : <p className="footnote muted">Nothing else planned ahead this month.</p>}
       </section>
+      {sheet && <TaskSheet id={sheet} onClose={() => setSheet(null)} />}
     </div>
   )
 }

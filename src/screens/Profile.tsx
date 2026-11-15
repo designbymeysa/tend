@@ -49,7 +49,7 @@ export function Settings({ onBack }: { onBack: () => void }) {
   const tog = (k: 'reduceMotion' | 'showTimer' | 'holdNotifications' | 'morningPrompt') => ({ on: settings[k], onChange: (v: boolean) => setSetting(k, v) })
   const exportCsv = () => {
     const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`
-    const csv = ['title,group,effort_min,status,planned_for,due', ...tasks.map((t) => [t.title, t.group, t.effort, t.status, t.plannedFor, t.due].map(q).join(','))].join('\n')
+    const csv = ['title,group,effort_min,done,planned_day,start_time,deadline,done_on', ...tasks.map((t) => [t.title, t.group, t.effort, t.done ? 'yes' : 'no', t.date, t.start, t.due, t.doneOn].map(q).join(','))].join('\n')
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'tend-tasks.csv'; a.click(); URL.revokeObjectURL(a.href)
     setNote('Your tasks were saved as tend-tasks.csv.')
   }

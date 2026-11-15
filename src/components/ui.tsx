@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
-import { Group, Task, effortLabel } from '../state/store'
+import { Group, TaskView, addDays, dayLabel, effortLabel, todayIso, weekday } from '../state/store'
 import { Doodle, IconBook, IconBriefcase, IconCalendar, IconCheck, IconChevronLeft, IconChevronRight, IconClock, IconFlag, IconHeart, IconList, IconPencil, IconPlus, IconSparkle } from './Icons'
 
 export const groupVar = (g: Group) => g === 'none' ? { bg: 'var(--bg-surface-muted)', strong: 'var(--task-past-icon-bg)', text: 'var(--text-secondary)' } : ({ bg: `var(--group-${g}-bg)`, strong: `var(--group-${g}-strong)`, text: `var(--group-${g}-text)` })
@@ -18,15 +18,29 @@ export function ProfileButton({ onClick }: { onClick?: () => void }) {
   return <button className="avatar" onClick={onClick} aria-label="Profile and settings">M</button>
 }
 
-export function TaskMeta({ task }: { task: Task }) {
+export function TaskMeta({ task }: { task: TaskView }) {
+  if (task.status === 'done') return <><EffortChip label={`DONE · ${effortLabel(task.effort)}`} />{task.doneOn && <DateTag label={`${dayLabel(task.doneOn)} ${task.doneAt ?? ''}`} />}</>
   return (<>
     <EffortChip label={effortLabel(task.effort)} />
-    {task.due && <DeadlineTag label={`DUE ${task.due}`} />}
-    {task.plannedFor && <DateTag label={`${task.status === 'decision' ? 'PLANNED FOR' : 'PLANNED'} ${task.plannedFor}`} />}
+    {task.due && <DeadlineTag label={`DUE ${dayLabel(task.due)}`} />}
+    {task.status === 'decision' ? <DateTag label={`PLANNED FOR ${weekday(task.date!)}`} /> : task.date && task.date !== todayIso() ? <DateTag label={`PLANNED ${dayLabel(task.date)}`} /> : null}
   </>)
 }
-export function PageHeader({ title, sub, onProfile }: { title: string; sub?: string; onProfile: () => void }) {
-  return <header className="header"><div className="top-right"><ProfileButton onClick={onProfile} /></div><h1>{title}</h1>{sub && <p className="sub">{sub}</p>}</header>
+/** Pick a day: quick chips plus the native date picker. `undefined` means no day. */
+export function DayPicker({ value, onChange, label, none, quick = true }: { value?: string; onChange: (v?: string) => void; label: string; none: string; quick?: boolean }) {
+  const t = todayIso(), tm = addDays(t, 1), other = !!value && (!quick || (value !== t && value !== tm))
+  const chip = (text: string, v: string | undefined) => <button type="button" className={`pchip ${value === v ? 'on' : ''}`} aria-pressed={value === v} onClick={() => onChange(v)}>{text}</button>
+  return (
+    <div className="chips" role="group" aria-label={label}>
+      {chip(none, undefined)}{quick && chip('Today', t)}{quick && chip('Tomorrow', tm)}
+      <label className={`pchip date ${other ? 'on' : ''}`}><IconCalendar size={14} />{other ? dayLabel(value!) : 'Pick a day'}
+        <input type="date" aria-label={`${label}: pick a day`} value={value ?? ''} onChange={(e) => onChange(e.target.value || undefined)} onClick={(e) => { try { e.currentTarget.showPicker() } catch { /* not supported */ } }} />
+      </label>
+    </div>
+  )
+}
+export function PageHeader({ title, sub, onProfile, extra }: { title: string; sub?: string; onProfile: () => void; extra?: ReactNode }) {
+  return <header className="header"><div className="top-right">{extra}<ProfileButton onClick={onProfile} /></div><h1>{title}</h1>{sub && <p className="sub">{sub}</p>}</header>
 }
 export const GROUP_LABEL: Record<Group, string> = { none: 'No group', work: 'Work', study: 'Study', personal: 'Personal', lifestyle: 'Lifestyle' }
 export function Sticky({ group, tag, text, style }: { group: Exclude<Group, 'none'>; tag: string; text: string; style: CSSProperties }) {
@@ -74,7 +88,7 @@ export function CapacitySlider({ value, onChange }: { value: number; onChange: (
   )
 }
 
-type CardProps = { task: Task; onToggle?: () => void; onOpen?: () => void; meta?: ReactNode; label?: string }
+type CardProps = { task: TaskView; onToggle?: () => void; onOpen?: () => void; meta?: ReactNode; label?: string }
 export function TaskCard({ task, onToggle, onOpen, meta, label }: CardProps) {
   const g = groupVar(task.group); const Icon = groupIcon[task.group]
   const done = task.status === 'done', focus = task.status === 'in-focus', decision = task.status === 'decision'
@@ -106,24 +120,24 @@ export function ViewSwitch({ value, onChange }: { value: 'focus' | 'timeline'; o
   )
 }
 
-export function DayPill({ day, date, planned, selected, onClick }: { day: string; date: number; planned?: boolean; selected?: boolean; onClick?: () => void }) {
+export function DayPill({ day, date, planned, selected, today, onClick }: { day: string; date: number; planned?: boolean; selected?: boolean; today?: boolean; onClick?: () => void }) {
   return (
-    <button className={`daypill ${selected ? 'sel' : ''}`} onClick={onClick} aria-pressed={selected}>
+    <button className={`daypill ${selected ? 'sel' : ''} ${today ? 'is-today' : ''}`} onClick={onClick} aria-pressed={selected} aria-label={`${day} ${date}${today ? ', today' : ''}${planned ? ', has tasks' : ''}`}>
       <span className="label-mono-sm">{day}</span><span className="callout">{date}</span>
-      {(planned || selected) && <i className="dot" />}
+      {planned && <i className="dot" />}
     </button>
   )
 }
 
-export function CapacityBar({ used, total, fmt, onEdit }: { used: number; total: number; fmt: (m: number) => string; onEdit?: () => void }) {
+export function CapacityBar({ used, total, fmt, onEdit, title = "Today's capacity" }: { used: number; total: number; fmt: (m: number) => string; onEdit?: () => void; title?: string }) {
   const over = used > total
   return (
     <div className="capacity">
-      <div className="cap-head"><span className="headline">Today's capacity</span>
-        {onEdit ? <button className="cap-edit callout" onClick={onEdit} aria-label={`Change today's capacity, now ${fmt(used)} of ${fmt(total)}`}>{fmt(used)} of {fmt(total)}<IconPencil size={16} /></button> : <span className="callout">{fmt(used)} of {fmt(total)}</span>}</div>
+      <div className="cap-head"><span className="headline">{title}</span>
+        {onEdit ? <button className="cap-edit callout" onClick={onEdit} aria-label={`Change capacity, now ${fmt(used)} of ${fmt(total)}`}>{fmt(used)} of {fmt(total)}<IconPencil size={16} /></button> : <span className="callout">{fmt(used)} of {fmt(total)}</span>}</div>
       <div className="track"><div className="fill" style={{ width: `${Math.min(100, (used / total) * 100)}%` }} /></div>
       <p className="footnote" style={{ color: 'var(--text-secondary)' }}>
-        {over ? 'That is more than fits today. Want to move one for later?' : `${fmt(total - used)} free for whatever comes up`}
+        {over ? 'That is more than fits. Want to move one for later?' : `${fmt(total - used)} free for whatever comes up`}
       </p>
     </div>
   )
