@@ -76,7 +76,7 @@ type State = {
   capacityMin: number; capacityByDay: Record<string, number> // usual capacity + one-day overrides
   settings: Settings; onboarded: boolean
   focusId: string | null; focusOpen: boolean; remaining: number; sessionMin: number
-  addTask: (t: Pick<Task, 'title'> & Partial<Task>) => void
+  addTask: (t: Pick<Task, 'title'> & Partial<Task>) => Task
   updateTask: (id: string, patch: Partial<Task>) => void
   deleteTask: (id: string) => void
   toggleDone: (id: string) => void
@@ -104,7 +104,7 @@ export const useTend = create<State>((set, get) => {
     settings: { ...defaultSettings, ...saved.settings }, onboarded: !!saved.onboarded,
     focusId: fresh ? 't1' : saved.focusId ?? null, focusOpen: false, sessionMin: saved.sessionMin ?? 45,
     remaining: fresh ? 24 * 60 + 18 : (saved.sessionMin ?? 45) * 60,
-    addTask: (t) => save((s) => ({ tasks: [...s.tasks, { group: 'none', effort: 30, done: false, ...t, id: 'u' + Date.now() }] })),
+    addTask: (t) => { const task: Task = { group: 'none', effort: 30, done: false, ...t, id: 'u' + Date.now() }; save((s) => ({ tasks: [...s.tasks, task] })); return task },
     updateTask: (id, p) => save(patch(id, (t) => ({ ...t, ...p }))),
     deleteTask: (id) => save((s) => ({ tasks: s.tasks.filter((t) => t.id !== id), focusId: s.focusId === id ? null : s.focusId, focusOpen: s.focusId === id ? false : s.focusOpen })),
     toggleDone: (id) => save((s) => ({

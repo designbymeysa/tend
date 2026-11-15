@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { GROUP_LABEL, PageHeader, SectionHeader, Sticky, TaskCard, groupVar } from '../components/ui'
 import { IconSearch } from '../components/Icons'
 import { TaskSheet } from '../components/Overlays'
@@ -6,13 +6,19 @@ import { Group, TaskView, todayIso, useTasks } from '../state/store'
 
 const GROUPS: Exclude<Group, 'none'>[] = ['work', 'study', 'personal', 'lifestyle']
 
-export default function Plan({ onProfile }: { onProfile: () => void }) {
+export default function Plan({ onProfile, reveal }: { onProfile: () => void; reveal?: { group: Group; id: string; n: number } }) {
   const tasks = useTasks()
   const [q, setQ] = useState('')
   const [open, setOpen] = useState<Group | null>('work')
   const [allPast, setAllPast] = useState(false)
   const [sheet, setSheet] = useState<string | null>(null)
   const today = todayIso()
+  useEffect(() => {
+    if (!reveal) return
+    setQ(''); setOpen(reveal.group)
+    const t = setTimeout(() => document.querySelector(`[data-task-id="${reveal.id}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 80)
+    return () => clearTimeout(t)
+  }, [reveal])
   const live = tasks.filter((t) => !t.done)
   // Coming up: anything with a future day, plus ungrouped tasks that carry a deadline
   const isComing = (t: TaskView) => (!!t.date && t.date > today) || (!t.date && t.group === 'none' && !!t.due)

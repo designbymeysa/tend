@@ -95,7 +95,7 @@ export function TaskCard({ task, onToggle, onOpen, meta, label }: CardProps) {
   const plain = task.group === 'none' && !done && !decision && !focus
   const style: CSSProperties = done || plain ? {} : focus ? { background: g.strong } : decision ? {} : { background: g.bg }
   return (
-    <div className={`card ${done ? 'card-done' : ''} ${decision ? 'card-decision' : ''} ${focus ? 'card-focus' : ''} ${plain ? 'card-plain' : ''}`} style={style} onClick={onOpen} role={onOpen ? 'button' : undefined}>
+    <div data-task-id={task.id} className={`card ${done ? 'card-done' : ''} ${decision ? 'card-decision' : ''} ${focus ? 'card-focus' : ''} ${plain ? 'card-plain' : ''}`} style={style} onClick={onOpen} role={onOpen ? 'button' : undefined}>
       <button className={`card-icon ${done ? 'is-done' : ''}`} style={decision || plain ? { background: 'var(--task-past-icon-bg)' } : undefined}
         onClick={(e) => { e.stopPropagation(); onToggle?.() }} aria-label={done ? 'Mark as not done' : 'Mark as done'} aria-pressed={done}>
         {done ? <IconCheck size={20} color="#fff" /> : <Icon size={20} />}

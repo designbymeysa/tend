@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Sheet, SheetHeader, OptionRow } from './Sheet'
 import { IconCheck, IconContinue, IconFlag, IconLaptop, IconPause, IconPlay, IconPlus, IconRelease, IconRescope, IconSparkle, IconSplit, IconCalendar, IconList, IconBriefcase, IconBook, IconHeart, IconChevronDown } from './Icons'
 import { CapacityBar, CapacitySlider, DayPicker, GROUP_LABEL } from './ui'
-import { Choice, Group, addDays, capacityFor, dayLabel, dayName, effortLabel, fmtDur, statusOf, todayIso, usedOn, useTend } from '../state/store'
+import { Choice, Group, Task, addDays, capacityFor, dayLabel, dayName, effortLabel, fmtDur, statusOf, todayIso, usedOn, useTend } from '../state/store'
 
 const WD = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 const dayOffset = (word: string) => { const i = WD.indexOf(word.slice(0, 3).toLowerCase()); return (i - new Date().getDay() + 7) % 7 || 7 }
@@ -50,7 +50,7 @@ function EffortPicker({ value, onChange }: { value: number; onChange: (m: number
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => <div className="understood"><span className="label-mono-sm muted">{label}</span>{children}</div>
 
 /** New task. `day` pre-selects the planned day (e.g. when adding from a future day). */
-export function CaptureSheet({ onClose, day }: { onClose: () => void; day?: string }) {
+export function CaptureSheet({ onClose, day, onAdded }: { onClose: () => void; day?: string; onAdded?: (t: Task) => void }) {
   const addTask = useTend((s) => s.addTask)
   const [text, setText] = useState('')
   const [group, setGroup] = useState<Group>('none')
@@ -59,8 +59,8 @@ export function CaptureSheet({ onClose, day }: { onClose: () => void; day?: stri
   const date = when ? when.v : p.planned
   const add = () => {
     if (!text.trim()) return
-    addTask({ title: p.title || text.trim(), group, effort: p.effort ?? 30, date, due: p.due })
-    onClose()
+    const t = addTask({ title: p.title || text.trim(), group, effort: p.effort ?? 30, date, due: p.due })
+    onClose(); onAdded?.(t)
   }
   return (
     <Sheet onClose={onClose} label="Capture a task">
