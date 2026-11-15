@@ -231,3 +231,18 @@ button.block{text-align:left;width:auto}
 button.fixed,button.tpill{text-align:left;width:100%}
 button.mcell{font:inherit;font-weight:500;font-size:15px;line-height:20px}
 .sheet>*{flex-shrink:0}
+
+/* Glass: translucent surface, strong blur + saturation, bright top edge, soft inner glow */
+:root{--glass-bg:linear-gradient(160deg,rgba(255,255,255,.72),rgba(255,255,255,.46));--glass-edge:rgba(255,255,255,.75)}
+.tabs{background:var(--glass-bg);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);border:1px solid var(--glass-edge);
+  box-shadow:0 8px 24px rgba(27,26,25,.10),0 1px 0 rgba(27,26,25,.06),inset 0 1px 1px rgba(255,255,255,.9),inset 0 -1px 2px rgba(27,26,25,.04)}
+.tabs button.on{background:rgba(255,255,255,.75);box-shadow:var(--depth-raised-small)}
+.capture{box-shadow:var(--elevation-floating),inset 0 1px 1px rgba(255,255,255,.22)}
+.scrim{background:rgba(27,26,25,.22);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.sheet{background:var(--glass-bg);-webkit-backdrop-filter:blur(32px) saturate(1.7);backdrop-filter:blur(32px) saturate(1.7);
+  border-top:1px solid var(--glass-edge);box-shadow:0 -8px 40px rgba(27,26,25,.14),inset 0 1px 1px rgba(255,255,255,.9)}
+.sheet .grab{background:rgba(27,26,25,.18)}
+.sheet .btn:not(.primary):not(.quiet),.sheet .option,.sheet .pchip,.sheet .capture-input,.sheet .cap-card{background:rgba(255,255,255,.7)}
+.sheet .option.sel{background:rgba(236,232,255,.85)}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.tabs,.sheet{background:rgba(255,255,255,.95)}}
+.sheet .pchip.on{background:var(--accent-default);color:#fff;box-shadow:var(--depth-selected)}
