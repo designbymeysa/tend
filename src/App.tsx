@@ -29,7 +29,7 @@ export default function App() {
   // + on the Today tab adds to the day being viewed (if it isn't in the past); elsewhere it saves for later
   // After adding, go to where the task lives so it is visible straight away
   const added = (t: Task) => {
-    if (t.date) { setDay(t.date); setTab('today'); setToast(`Added to ${dayName(t.date).toLowerCase()}`) }
+    if (t.date) { if (tab !== 'month') { setDay(t.date); setTab('today') } setToast(`Added to ${dayName(t.date).toLowerCase()}`) } // from Month you stay put and see it appear under the grid
     else { setTab('plan'); setReveal({ group: t.group, id: t.id, n: Date.now() }); setToast('Saved for later in Plan') }
   }
   const quickAdd = () => setCapture({ day: tab === 'today' && day >= todayIso() ? day : undefined })
@@ -42,7 +42,7 @@ export default function App() {
               : page === 'settings' ? <Settings onBack={() => setPage('profile')} />
               : tab === 'today' ? <Today onProfile={profile} onAdd={addFor} />
               : tab === 'plan' ? <Plan onProfile={profile} reveal={reveal} />
-              : tab === 'month' ? <Month onProfile={profile} onOpenDay={(d) => { setDay(d); setTab('today') }} />
+              : tab === 'month' ? <Month onProfile={profile} onAdd={addFor} onOpenDay={(d) => { setDay(d); setTab('today') }} />
               : <Reflect onProfile={profile} />}
           </div>
           {!page && <TabBar active={tab} onChange={setTab} onCapture={quickAdd} />}
