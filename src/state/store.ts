@@ -90,21 +90,25 @@ type State = {
   startScenario: (m: 'new' | 'demo') => void; leaveScenario: () => void
   finishOnboarding: () => void; reset: () => void
 }
+/** Flip to true to bring back the first screen that asks to try Tend as a new user or with a sample week. */
+export const WELCOME_ENABLED = false
 const KEY = 'tend-demo-3'
 const load = (): Partial<State> => { try { return JSON.parse(localStorage.getItem(KEY) || '{}') } catch { return {} } }
 const persist = (s: State) => { try { localStorage.setItem(KEY, JSON.stringify({ tasks: s.tasks, view: s.view, capacityMin: s.capacityMin, capacityByDay: s.capacityByDay, sessionMin: s.sessionMin, settings: s.settings, onboarded: s.onboarded, focusId: s.focusId, mode: s.mode })) } catch { /* ignore */ } }
 const saved = load()
+// Everyone starts with the sample week unless they already have their own saved state (or the welcome screen is on)
+const fresh = WELCOME_ENABLED ? !saved.tasks : !saved.tasks || saved.mode == null
 const nowTime = () => new Date().toTimeString().slice(0, 5)
 
 export const useTend = create<State>((set, get) => {
   const save = (fn: (s: State) => Partial<State>) => { set(fn); persist(get()) }
   const patch = (id: string, fn: (t: Task) => Task) => (s: State) => ({ tasks: s.tasks.map((t) => t.id === id ? fn(t) : t) })
   return {
-    tasks: saved.tasks ?? [], mode: saved.mode ?? (saved.tasks ? 'demo' : null), view: saved.view ?? 'focus', day: todayIso(),
+    tasks: fresh ? (WELCOME_ENABLED ? [] : makeSeed()) : saved.tasks!, mode: fresh ? (WELCOME_ENABLED ? null : 'demo') : saved.mode ?? 'demo', view: saved.view ?? 'focus', day: todayIso(),
     capacityMin: saved.capacityMin ?? 210, capacityByDay: saved.capacityByDay ?? {},
-    settings: { ...defaultSettings, ...saved.settings }, onboarded: !!saved.onboarded,
-    focusId: saved.focusId ?? null, focusOpen: false, sessionMin: saved.sessionMin ?? 45,
-    remaining: (saved.sessionMin ?? 45) * 60,
+    settings: { ...defaultSettings, ...saved.settings }, onboarded: fresh ? !WELCOME_ENABLED : !!saved.onboarded,
+    focusId: fresh ? (WELCOME_ENABLED ? null : 't1') : saved.focusId ?? null, focusOpen: false, sessionMin: saved.sessionMin ?? 45,
+    remaining: fresh && !WELCOME_ENABLED ? 24 * 60 + 18 : (saved.sessionMin ?? 45) * 60,
     addTask: (t) => { const task: Task = { group: 'none', effort: 30, done: false, ...t, id: 'u' + Date.now() }; save((s) => ({ tasks: [...s.tasks, task] })); return task },
     updateTask: (id, p) => save(patch(id, (t) => ({ ...t, ...p }))),
     deleteTask: (id) => save((s) => ({ tasks: s.tasks.filter((t) => t.id !== id), focusId: s.focusId === id ? null : s.focusId, focusOpen: s.focusId === id ? false : s.focusOpen })),
