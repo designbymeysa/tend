@@ -283,3 +283,8 @@ button.mcell{font:inherit;font-weight:500;font-size:15px;line-height:20px}
 .sticky{touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;transition:transform .18s ease,box-shadow .18s ease}
 .sticky.lifted{cursor:grabbing;z-index:6;transition:box-shadow .18s ease;box-shadow:0 12px 24px rgba(27,26,25,.2),var(--depth-raised-small)}
 .sticky:focus-visible{outline:2px solid var(--brand-sprout);outline-offset:3px}
+
+.mcell{border:0;background:none}
+.mcell.picked:not(.today){box-shadow:inset 0 0 0 2px var(--accent-default)}
+.mcell.today.picked{box-shadow:var(--depth-selected),0 0 0 2px var(--bg-canvas),0 0 0 4px var(--accent-default)}
+.day-panel{padding-top:4px}
