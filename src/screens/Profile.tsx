@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { CapacitySlider, GroupChips, SettingsRow, TopBar } from '../components/ui'
 import { IconChevronLeft, IconGear } from '../components/Icons'
 import { Sheet, SheetHeader } from '../components/Sheet'
-import { Settings as S, effortLabel, fmtDur, useTend } from '../state/store'
+import { Settings as S, WELCOME_ENABLED, effortLabel, fmtDur, useTend } from '../state/store'
 
 const next = <T,>(list: T[], cur: T) => list[(list.indexOf(cur) + 1) % list.length]
 const WORK = ['MON–FRI · 9–18', 'MON–FRI · 8–17', 'MON–FRI · 10–19', 'MON–SAT · 9–15']
@@ -86,7 +86,7 @@ export function Settings({ onBack }: { onBack: () => void }) {
         <div className="scard">
           {mode === 'demo' && <SettingsRow label="Reset demo data" helper="Brings back the sample week. Your settings stay." onClick={() => { reset(); setNote('The sample week is back.') }} />}
           <SettingsRow label="Export my tasks" helper="Download everything as a .csv file" onClick={exportCsv} />
-          <SettingsRow label="Switch scenario" helper="Back to the start, to try Tend as someone else. Clears what is here." onClick={leaveScenario} />
+          {WELCOME_ENABLED && <SettingsRow label="Switch scenario" helper="Back to the start, to try Tend as someone else. Clears what is here." onClick={leaveScenario} />}
         </div>
         <p className="footnote muted" role="status">{note}</p>
       </section>
