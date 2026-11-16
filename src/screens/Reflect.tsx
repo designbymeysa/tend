@@ -42,9 +42,9 @@ export default function Reflect({ onProfile }: { onProfile: () => void }) {
       <section className="sec" style={{ gap: 14 }}>
         <SectionHeader title="Noticed this week" />
         <div className="stage-notes" style={{ height: 290 }}>
-          <Sticky group="personal" tag="DONE" text={done.length ? `You finished ${n(done.length)}. Each one counts.` : 'A quiet week so far. That is allowed.'} style={{ left: 2, top: 27, width: 158, transform: 'rotate(4deg)' }} />
-          <Sticky group="study" tag="REST" text={restNote} style={{ left: 181, top: 4, width: 156, transform: 'rotate(-4deg)' }} />
-          <Sticky group="work" tag="CALM" text={`${fmtDur(total)} of focus. No scores, no streaks.`} style={{ left: 76, top: 155, width: 196, transform: 'rotate(2deg)' }} />
+          <Sticky id="reflect-pause" group="personal" tag="DONE" text={done.length ? `You finished ${n(done.length)}. Each one counts.` : 'A quiet week so far. That is allowed.'} style={{ left: 2, top: 27, width: 158 }} rot={4} />
+          <Sticky id="reflect-rest" group="study" tag="REST" text={restNote} style={{ left: 181, top: 4, width: 156 }} rot={-4} />
+          <Sticky id="reflect-calm" group="work" tag="CALM" text={`${fmtDur(total)} of focus. No scores, no streaks.`} style={{ left: 76, top: 155, width: 196 }} rot={2} />
         </div>
       </section>
 

@@ -44,7 +44,7 @@ export function Profile({ onBack, onSettings }: { onBack: () => void; onSettings
 }
 
 export function Settings({ onBack }: { onBack: () => void }) {
-  const { settings, setSetting, sessionMin, setSessionMin, reset, tasks } = useTend()
+  const { settings, setSetting, sessionMin, setSessionMin, reset, tasks, mode, leaveScenario } = useTend()
   const [note, setNote] = useState('')
   const tog = (k: 'reduceMotion' | 'showTimer' | 'holdNotifications' | 'morningPrompt') => ({ on: settings[k], onChange: (v: boolean) => setSetting(k, v) })
   const exportCsv = () => {
@@ -84,8 +84,9 @@ export function Settings({ onBack }: { onBack: () => void }) {
       <section className="group">
         {label('DATA')}
         <div className="scard">
-          <SettingsRow label="Reset demo data" helper="Brings back the sample week. Your settings stay." onClick={() => { reset(); setNote('The sample week is back.') }} />
+          {mode === 'demo' && <SettingsRow label="Reset demo data" helper="Brings back the sample week. Your settings stay." onClick={() => { reset(); setNote('The sample week is back.') }} />}
           <SettingsRow label="Export my tasks" helper="Download everything as a .csv file" onClick={exportCsv} />
+          <SettingsRow label="Switch scenario" helper="Back to the start, to try Tend as someone else. Clears what is here." onClick={leaveScenario} />
         </div>
         <p className="footnote muted" role="status">{note}</p>
       </section>

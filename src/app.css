@@ -246,3 +246,40 @@ button.mcell{font:inherit;font-weight:500;font-size:15px;line-height:20px}
 .sheet .option.sel{background:rgba(236,232,255,.85)}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.tabs,.sheet{background:rgba(255,255,255,.95)}}
 .sheet .pchip.on{background:var(--accent-default);color:#fff;box-shadow:var(--depth-selected)}
+
+/* Task sheet: compact actions + accordion rows */
+.sheet .actions{display:flex;gap:10px}.sheet .actions .btn{flex:1}.sheet .actions .btn.primary{flex:1.5}
+.title-input{border:0;outline:0;background:none;width:100%;font:600 24px/1.15 var(--font-sans);letter-spacing:-.01em;color:var(--text-primary);padding:2px 0;border-radius:8px}
+.title-input:focus-visible{outline:2px solid var(--brand-sprout);outline-offset:2px}
+.sheet .scard{background:rgba(255,255,255,.7);border-color:rgba(255,255,255,.6)}
+.trow+.trow{border-top:1px solid var(--border-subtle)}
+.trow .srow{min-height:48px;padding:10px 16px}
+.trow .chev{display:grid;color:var(--text-muted);transition:transform .2s}.trow .chev.flip{transform:rotate(180deg)}
+.trow-body{padding:2px 16px 14px}
+.sheet .trow .pchip:not(.on){background:var(--bg-surface-muted);box-shadow:none}
+.sheet .trow .gchip{box-shadow:none}
+.link.danger{color:var(--text-muted)}
+
+.toast{position:absolute;left:50%;bottom:112px;transform:translateX(-50%);z-index:20;max-width:calc(100% - 32px);padding:10px 18px;border-radius:var(--radius-full);background:var(--accent-default);color:#fff;font-weight:500;font-size:14px;line-height:20px;box-shadow:var(--elevation-floating);animation:up .25s ease;white-space:nowrap}
+
+.filters{display:flex;flex-direction:column;gap:8px;margin:-12px calc(-1 * var(--space-md)) 0}
+.fchips{display:flex;gap:8px;overflow-x:auto;padding:4px var(--space-md);scrollbar-width:none}
+.fchips::-webkit-scrollbar{display:none}
+.fchips .pchip{flex:none;min-height:34px;padding:0 12px;font-size:13px}
+.fchips .pchip .gdot{width:8px;height:8px}
+.fcount{margin-left:2px;opacity:.6}
+
+/* Welcome */
+.welcome{height:100%;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;gap:32px;padding:max(env(safe-area-inset-top),14px) var(--space-md) max(env(safe-area-inset-bottom),24px)}
+.welcome-top{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+.welcome-icon{border-radius:18px;box-shadow:var(--depth-card)}
+.welcome-options{display:flex;flex-direction:column;gap:12px}
+.wopt{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:20px;border-radius:var(--radius-card);background:var(--bg-surface);box-shadow:var(--depth-card);text-align:left;color:var(--text-primary)}
+.wopt b{font-weight:600;font-size:20px;line-height:26px;letter-spacing:-.2px}
+.wopt .footnote{color:var(--text-secondary)}
+.wopt:active{transform:translateY(1px)}
+
+/* Draggable sticky notes */
+.sticky{touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;transition:transform .18s ease,box-shadow .18s ease}
+.sticky.lifted{cursor:grabbing;z-index:6;transition:box-shadow .18s ease;box-shadow:0 12px 24px rgba(27,26,25,.2),var(--depth-raised-small)}
+.sticky:focus-visible{outline:2px solid var(--brand-sprout);outline-offset:3px}
