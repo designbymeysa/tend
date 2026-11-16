@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { Group, TaskView, addDays, dayLabel, effortLabel, todayIso, weekday } from '../state/store'
 import { Doodle, IconBook, IconBriefcase, IconCalendar, IconCheck, IconChevronLeft, IconChevronRight, IconClock, IconFlag, IconHeart, IconList, IconPencil, IconPlus, IconSparkle } from './Icons'
@@ -45,9 +46,35 @@ export function PageHeader({ title, sub, onProfile, extra }: { title: string; su
   return <header className="header"><div className="top-right">{extra}<ProfileButton onClick={onProfile} /></div><h1>{title}</h1>{sub && <p className="sub">{sub}</p>}</header>
 }
 export const GROUP_LABEL: Record<Group, string> = { none: 'No group', work: 'Work', study: 'Study', personal: 'Personal', lifestyle: 'Lifestyle' }
-export function Sticky({ group, tag, text, style }: { group: Exclude<Group, 'none'>; tag: string; text: string; style: CSSProperties }) {
-  const g = groupVar(group)
-  return <div className="sticky" style={{ ['--sb' as string]: g.bg, ['--ss' as string]: g.strong, ['--st' as string]: g.text, ...style }}><span className="tag label-mono-sm">{tag}</span>{text}</div>
+/** A sticky note you can pick up and move with a finger or mouse (or arrow keys). It stays inside its area and remembers where you left it. */
+export function Sticky({ id, group, tag, text, rot = 0, style }: { id: string; group: Exclude<Group, 'none'>; tag: string; text: string; rot?: number; style: CSSProperties }) {
+  const g = groupVar(group), key = `tend-sticky:${id}`
+  const ref = useRef<HTMLDivElement>(null)
+  const drag = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null)
+  const [pos, setPos] = useState({ x: 0, y: 0 }), [lifted, setLifted] = useState(false)
+  const clamp = (x: number, y: number) => {
+    const el = ref.current, par = el?.parentElement; if (!el || !par) return { x, y }
+    return { x: Math.min(Math.max(x, -el.offsetLeft), par.clientWidth - el.offsetLeft - el.offsetWidth), y: Math.min(Math.max(y, -el.offsetTop), par.clientHeight - el.offsetTop - el.offsetHeight) }
+  }
+  const save = (v: { x: number; y: number }) => { try { localStorage.setItem(key, JSON.stringify(v)) } catch { /* ignore */ } }
+  useLayoutEffect(() => { try { const v = JSON.parse(localStorage.getItem(key) || 'null'); if (v) setPos(clamp(v.x, v.y)) } catch { /* ignore */ } }, [key])
+  const down = (e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    e.currentTarget.setPointerCapture(e.pointerId); drag.current = { px: e.clientX, py: e.clientY, ox: pos.x, oy: pos.y }; setLifted(true)
+  }
+  const move = (e: React.PointerEvent) => { const d = drag.current; if (d) setPos(clamp(d.ox + e.clientX - d.px, d.oy + e.clientY - d.py)) }
+  const up = () => { if (!drag.current) return; drag.current = null; setLifted(false); save(pos) }
+  const key_ = (e: React.KeyboardEvent) => {
+    const d = { ArrowLeft: [-8, 0], ArrowRight: [8, 0], ArrowUp: [0, -8], ArrowDown: [0, 8] }[e.key]
+    if (!d) return; e.preventDefault(); const v = clamp(pos.x + d[0], pos.y + d[1]); setPos(v); save(v)
+  }
+  return (
+    <div ref={ref} className={`sticky ${lifted ? 'lifted' : ''}`} tabIndex={0} role="group" aria-label={`Sticky note: ${text}. Drag to move, or use the arrow keys.`}
+      style={{ ['--sb' as string]: g.bg, ['--ss' as string]: g.strong, ['--st' as string]: g.text, ...style, transform: `translate(${pos.x}px, ${pos.y}px) rotate(${lifted ? rot * 0.4 : rot}deg)` }}
+      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onKeyDown={key_}>
+      <span className="tag label-mono-sm">{tag}</span>{text}
+    </div>
+  )
 }
 export function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
   return <button className="toggle" role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)} />

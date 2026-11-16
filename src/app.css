@@ -278,3 +278,8 @@ button.mcell{font:inherit;font-weight:500;font-size:15px;line-height:20px}
 .wopt b{font-weight:600;font-size:20px;line-height:26px;letter-spacing:-.2px}
 .wopt .footnote{color:var(--text-secondary)}
 .wopt:active{transform:translateY(1px)}
+
+/* Draggable sticky notes */
+.sticky{touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;transition:transform .18s ease,box-shadow .18s ease}
+.sticky.lifted{cursor:grabbing;z-index:6;transition:box-shadow .18s ease;box-shadow:0 12px 24px rgba(27,26,25,.2),var(--depth-raised-small)}
+.sticky:focus-visible{outline:2px solid var(--brand-sprout);outline-offset:3px}

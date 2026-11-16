@@ -50,8 +50,8 @@ export default function Plan({ onProfile, reveal }: { onProfile: () => void; rev
       <section className="sec" style={{ gap: 14 }}>
         <SectionHeader title="Remember that" />
         <div className="stage-notes" style={{ height: 150 }}>
-          <Sticky group="lifestyle" tag="ENOUGH" text="You only need a few of these today." style={{ left: 10, top: 10, width: 160, transform: 'rotate(-3deg)' }} />
-          <Sticky group="study" tag="NO RUSH" text="The rest will wait for you." style={{ left: 173, top: 44, width: 160, transform: 'rotate(3deg)' }} />
+          <Sticky id="plan-enough" group="lifestyle" tag="ENOUGH" text="You only need a few of these today." style={{ left: 10, top: 10, width: 160 }} rot={-3} />
+          <Sticky id="plan-norush" group="study" tag="NO RUSH" text="The rest will wait for you." style={{ left: 173, top: 44, width: 160 }} rot={3} />
         </div>
       </section>
       <label className="search">
