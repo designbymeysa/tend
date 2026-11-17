@@ -22,6 +22,14 @@ export default function App() {
   const [replay, setReplay] = useState(() => location.hash === '#onboarding')
   const scroll = useRef<HTMLDivElement>(null)
   useEffect(() => { scroll.current?.scrollTo(0, 0) }, [tab, page])
+  // A new calendar day starts fresh: re-check when the tab regains focus and once a minute while it is open
+  useEffect(() => {
+    const roll = () => useTend.getState().rollDay()
+    const vis = () => { if (!document.hidden) roll() }
+    const i = setInterval(roll, 30_000)
+    document.addEventListener('visibilitychange', vis); window.addEventListener('focus', roll)
+    return () => { clearInterval(i); document.removeEventListener('visibilitychange', vis); window.removeEventListener('focus', roll) }
+  }, [])
   useEffect(() => { if (!mode) { setPage(null); setTab('today'); setCapture(null); setTransition(false) } }, [mode])
   const profile = () => setPage('profile')
   const endOnboarding = () => { finishOnboarding(); setReplay(false); if (location.hash) history.replaceState(null, '', location.pathname + location.search) }

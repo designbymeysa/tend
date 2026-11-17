@@ -88,27 +88,38 @@ type State = {
   setSetting: <K extends keyof Settings>(k: K, v: Settings[K]) => void
   mode: 'new' | 'demo' | null   // which scenario is being tried; null = show the welcome screen
   startScenario: (m: 'new' | 'demo') => void; leaveScenario: () => void
+  seededOn: string | null   // the day the sample week was last planned around
+  rollDay: () => void       // call when the date may have changed: re-anchors the sample week to the real today
   finishOnboarding: () => void; reset: () => void
 }
 /** Flip to true to bring back the first screen that asks to try Tend as a new user or with a sample week. */
 export const WELCOME_ENABLED = false
 const KEY = 'tend-demo-3'
 const load = (): Partial<State> => { try { return JSON.parse(localStorage.getItem(KEY) || '{}') } catch { return {} } }
-const persist = (s: State) => { try { localStorage.setItem(KEY, JSON.stringify({ tasks: s.tasks, view: s.view, capacityMin: s.capacityMin, capacityByDay: s.capacityByDay, sessionMin: s.sessionMin, settings: s.settings, onboarded: s.onboarded, focusId: s.focusId, mode: s.mode })) } catch { /* ignore */ } }
+const persist = (s: State) => { try { localStorage.setItem(KEY, JSON.stringify({ tasks: s.tasks, view: s.view, capacityMin: s.capacityMin, capacityByDay: s.capacityByDay, sessionMin: s.sessionMin, settings: s.settings, onboarded: s.onboarded, focusId: s.focusId, mode: s.mode, seededOn: s.seededOn })) } catch { /* ignore */ } }
 const saved = load()
 // Everyone starts with the sample week unless they already have their own saved state (or the welcome screen is on)
 const fresh = WELCOME_ENABLED ? !saved.tasks : !saved.tasks || saved.mode == null
+// Sample tasks have ids like t1/w2/s3; anything the visitor adds is 'u…' and keeps the dates they chose.
+const isUserTask = (t: Task) => t.id.startsWith('u')
+const SEED_REMAINING = 24 * 60 + 18
+/** The sample week planned around the real today, with the visitor's own tasks carried over untouched. */
+const replan = (tasks: Task[]) => [...makeSeed(), ...tasks.filter(isUserTask)]
+let lastToday = todayIso()
+const initialMode: 'new' | 'demo' | null = fresh ? (WELCOME_ENABLED ? null : 'demo') : saved.mode ?? 'demo'
+const replanned = initialMode === 'demo' && (fresh || saved.seededOn !== todayIso())
+const initialTasks: Task[] = fresh ? (WELCOME_ENABLED ? [] : makeSeed()) : replanned ? replan(saved.tasks!) : saved.tasks!
 const nowTime = () => new Date().toTimeString().slice(0, 5)
 
 export const useTend = create<State>((set, get) => {
   const save = (fn: (s: State) => Partial<State>) => { set(fn); persist(get()) }
   const patch = (id: string, fn: (t: Task) => Task) => (s: State) => ({ tasks: s.tasks.map((t) => t.id === id ? fn(t) : t) })
   return {
-    tasks: fresh ? (WELCOME_ENABLED ? [] : makeSeed()) : saved.tasks!, mode: fresh ? (WELCOME_ENABLED ? null : 'demo') : saved.mode ?? 'demo', view: saved.view ?? 'focus', day: todayIso(),
+    tasks: initialTasks, mode: initialMode, seededOn: initialMode === 'demo' ? todayIso() : null, view: saved.view ?? 'focus', day: todayIso(),
     capacityMin: saved.capacityMin ?? 210, capacityByDay: saved.capacityByDay ?? {},
     settings: { ...defaultSettings, ...saved.settings }, onboarded: fresh ? !WELCOME_ENABLED : !!saved.onboarded,
-    focusId: fresh ? (WELCOME_ENABLED ? null : 't1') : saved.focusId ?? null, focusOpen: false, sessionMin: saved.sessionMin ?? 45,
-    remaining: fresh && !WELCOME_ENABLED ? 24 * 60 + 18 : (saved.sessionMin ?? 45) * 60,
+    focusId: fresh ? (WELCOME_ENABLED ? null : 't1') : replanned ? 't1' : saved.focusId ?? null, focusOpen: false, sessionMin: saved.sessionMin ?? 45,
+    remaining: (fresh && !WELCOME_ENABLED) || replanned ? SEED_REMAINING : (saved.sessionMin ?? 45) * 60,
     addTask: (t) => { const task: Task = { group: 'none', effort: 30, done: false, ...t, id: 'u' + Date.now() }; save((s) => ({ tasks: [...s.tasks, task] })); return task },
     updateTask: (id, p) => save(patch(id, (t) => ({ ...t, ...p }))),
     deleteTask: (id) => save((s) => ({ tasks: s.tasks.filter((t) => t.id !== id), focusId: s.focusId === id ? null : s.focusId, focusOpen: s.focusId === id ? false : s.focusOpen })),
@@ -142,11 +153,18 @@ export const useTend = create<State>((set, get) => {
     finishOnboarding: () => save(() => ({ onboarded: true })),
     startScenario: (mode) => save(() => ({
       mode, day: todayIso(), view: 'focus' as const, capacityMin: 210, capacityByDay: {}, sessionMin: 45, settings: { ...defaultSettings },
-      tasks: mode === 'demo' ? makeSeed() : [], onboarded: mode === 'demo',
+      tasks: mode === 'demo' ? makeSeed() : [], onboarded: mode === 'demo', seededOn: mode === 'demo' ? todayIso() : null,
       focusId: mode === 'demo' ? 't1' : null, remaining: mode === 'demo' ? 24 * 60 + 18 : 45 * 60, focusOpen: false,
     })),
+    rollDay: () => {
+      const t = todayIso(); if (t === lastToday) return
+      lastToday = t
+      save((s) => s.mode === 'demo'
+        ? { day: t, seededOn: t, tasks: replan(s.tasks), focusId: 't1', remaining: SEED_REMAINING, focusOpen: false }
+        : { day: t })
+    },
     leaveScenario: () => save(() => ({ mode: null, focusOpen: false })),
-    reset: () => save(() => ({ tasks: makeSeed(), view: 'focus', day: todayIso(), focusId: 't1', remaining: 24 * 60 + 18, capacityByDay: {} })),
+    reset: () => save(() => ({ seededOn: todayIso(), tasks: makeSeed(), view: 'focus', day: todayIso(), focusId: 't1', remaining: 24 * 60 + 18, capacityByDay: {} })),
   }
 })
 /** Tasks with their status worked out from dates, done state and the current focus. */
