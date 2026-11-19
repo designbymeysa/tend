@@ -1,27 +1,34 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Sheet, SheetHeader, OptionRow } from './Sheet'
-import { IconCheck, IconContinue, IconFlag, IconLaptop, IconPause, IconPlay, IconPlus, IconRelease, IconRescope, IconSparkle, IconSplit, IconCalendar, IconList, IconBriefcase, IconBook, IconHeart, IconChevronDown } from './Icons'
+import { IconClock, IconCheck, IconContinue, IconFlag, IconLaptop, IconPause, IconPlay, IconPlus, IconRelease, IconRescope, IconSparkle, IconSplit, IconCalendar, IconList, IconBriefcase, IconBook, IconHeart, IconChevronDown } from './Icons'
 import { CapacityBar, CapacitySlider, DayPicker, GROUP_LABEL } from './ui'
 import { Choice, Group, Task, addDays, capacityFor, dayLabel, dayName, effortLabel, fmtDur, statusOf, todayIso, usedOn, useTend } from '../state/store'
 
 const WD = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 const dayOffset = (word: string) => { const i = WD.indexOf(word.slice(0, 3).toLowerCase()); return (i - new Date().getDay() + 7) % 7 || 7 }
+const TIME_RE = /\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b|\b(?:at\s+)?([01]?\d|2[0-3]):([0-5]\d)\b/i
 const EFFORT_RE = /~?\s*(\d+(?:\.\d+)?)\s*(h|hr|hrs|hour|hours|m|min|mins)\b/i
 
 /** Reads effort, planned day and deadline out of free text like "Slides for client tmrw ~2h due fri". */
 export function parseCapture(text: string) {
-  let effort: number | undefined, planned: string | undefined, due: string | undefined
+  let effort: number | undefined, planned: string | undefined, due: string | undefined, time: string | undefined
   const T = todayIso()
   const e = text.match(EFFORT_RE)
   if (e) { const n = parseFloat(e[1]); effort = /^h/i.test(e[2]) ? Math.round(n * 60) : Math.round(n) }
+  const tm = text.match(TIME_RE)
+  if (tm) {
+    const pad = (n: number) => String(n).padStart(2, '0')
+    if (tm[3]) { const h = parseInt(tm[1], 10); if (h >= 1 && h <= 12) time = `${pad((h % 12) + (/pm/i.test(tm[3]) ? 12 : 0))}:${pad(parseInt(tm[2] ?? '0', 10))}` }
+    else time = `${pad(parseInt(tm[4], 10))}:${tm[5]}`
+  }
   const dm = text.match(/\b(?:due|by)\s+(mon|tue|wed|thu|fri|sat|sun|today|tmrw|tomorrow)[a-z]*/i)
   if (dm) due = /^tod/i.test(dm[1]) ? T : /^(tmrw|tom)/i.test(dm[1]) ? addDays(T, 1) : addDays(T, dayOffset(dm[1]))
   const clean = text.replace(/\b(?:due|by)\s+[a-z]+/gi, '')
   if (/\b(tmrw|tomorrow)\b/i.test(clean)) planned = addDays(T, 1)
   else if (/\btoday\b/i.test(clean)) planned = T
   else { const w = clean.match(/\b(mon|tue|wed|thu|fri|sat|sun)(day|sday|nesday|rsday|urday)?\b/i); if (w) planned = addDays(T, dayOffset(w[1])) }
-  const title = clean.replace(EFFORT_RE, '').replace(/\b(tmrw|tomorrow|today)\b/i, '').replace(/\b(?:on\s+)?(mon|tue|wed|thu|fri|sat|sun)(day|sday|nesday|rsday|urday)?\b/i, '').replace(/\s+/g, ' ').trim()
-  return { effort, planned, due, title }
+  const title = clean.replace(TIME_RE, (m) => (time ? '' : m)).replace(EFFORT_RE, '').replace(/\b(tmrw|tomorrow|today)\b/i, '').replace(/\b(?:on\s+)?(mon|tue|wed|thu|fri|sat|sun)(day|sday|nesday|rsday|urday)?\b/i, '').replace(/\s+/g, ' ').trim()
+  return { effort, planned, due, time, title }
 }
 
 const GROUPS: { id: Group; label: string; icon: JSX.Element }[] = [
@@ -49,6 +56,21 @@ function EffortPicker({ value, onChange }: { value: number; onChange: (m: number
 }
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => <div className="understood"><span className="label-mono-sm muted">{label}</span>{children}</div>
 
+const TIME_PRESETS = ['09:00', '12:00', '15:00', '18:00']
+/** Time of day for a task that has a date: Any time, a few quick times, or a custom one. */
+function TimePicker({ value, onChange }: { value?: string; onChange: (v?: string) => void }) {
+  const custom = !!value && !TIME_PRESETS.includes(value)
+  return (
+    <div className="chips" role="group" aria-label="Time of day">
+      <button type="button" className={`pchip ${!value ? 'on' : ''}`} aria-pressed={!value} onClick={() => onChange(undefined)}>Any time</button>
+      {TIME_PRESETS.map((t) => <button key={t} type="button" className={`pchip label-mono ${value === t ? 'on' : ''}`} aria-pressed={value === t} onClick={() => onChange(t)}>{t}</button>)}
+      <label className={`pchip date ${custom ? 'on' : ''}`}>{custom ? value : 'Pick a time'}
+        <input type="time" aria-label="Pick a time" value={value ?? ''} onChange={(e) => onChange(e.target.value || undefined)} onClick={(e) => { try { e.currentTarget.showPicker() } catch { /* not supported */ } }} />
+      </label>
+    </div>
+  )
+}
+
 /** New task. `day` pre-selects the planned day (e.g. when adding from a future day). */
 export function CaptureSheet({ onClose, day, onAdded }: { onClose: () => void; day?: string; onAdded?: (t: Task) => void }) {
   const addTask = useTend((s) => s.addTask)
@@ -56,25 +78,30 @@ export function CaptureSheet({ onClose, day, onAdded }: { onClose: () => void; d
   const [group, setGroup] = useState<Group>('none')
   const [when, setWhen] = useState<{ v?: string } | null>(day ? { v: day } : null) // null = follow what was typed
   const p = useMemo(() => parseCapture(text), [text])
-  const date = when ? when.v : p.planned
+  const [at, setAt] = useState<{ v?: string } | null>(null) // null = follow what was typed
+  // a typed time like "at 3pm" with no day means today
+  const date = when ? when.v : p.planned ?? (p.time ? todayIso() : undefined)
+  const start = date ? (at ? at.v : p.time) : undefined
   const add = () => {
     if (!text.trim()) return
-    const t = addTask({ title: p.title || text.trim(), group, effort: p.effort ?? 30, date, due: p.due })
+    const t = addTask({ title: p.title || text.trim(), group, effort: p.effort ?? 30, date, start, due: p.due })
     onClose(); onAdded?.(t)
   }
   return (
     <Sheet onClose={onClose} label="Capture a task">
       <SheetHeader eyebrow="NEW TASK" title="What's on your mind?" sub="Just type it. We'll work out the rest." />
       <input className="capture-input" autoFocus value={text} placeholder="e.g. Slides for client tmrw ~2h due fri" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} aria-label="Task" />
-      {(p.effort || p.due) && (
+      {(p.effort || p.due || (p.time && !at)) && (
         <Field label="UNDERSTOOD AS">
           <div className="chips">
             {p.effort && <span className="chip chip-soft"><IconSparkle size={14} /><span className="label-mono">{effortLabel(p.effort)}</span></span>}
+            {p.time && !at && <span className="chip chip-soft"><IconClock size={14} /><span className="label-mono">AT {p.time}</span></span>}
             {p.due && <span className="chip chip-deadline"><IconFlag size={14} color="#fff" /><span className="label-mono">DUE {dayLabel(p.due)}</span></span>}
           </div>
         </Field>
       )}
       <Field label="WHEN"><DayPicker label="When" none="Whenever" value={date} onChange={(v) => setWhen({ v })} /></Field>
+      {date && <Field label="TIME OF DAY"><TimePicker value={start} onChange={(v) => setAt({ v })} /></Field>}
       <Field label="GROUP"><GroupPicker value={group} onChange={setGroup} /></Field>
       <button className="btn primary" disabled={!text.trim()} onClick={add}><IconPlus size={18} color="#fff" /> Add task</button>
       <button className="link" onClick={onClose}>Not now</button>
@@ -120,12 +147,7 @@ export function TaskSheet({ id, onClose }: { id: string; onClose: () => void }) 
         {row('effort', 'Effort', effortLabel(task.effort), <EffortPicker value={task.effort} onChange={(m) => up({ effort: m })} />)}
         {row('group', 'Group', GROUP_LABEL[task.group], <GroupPicker value={task.group} onChange={(g) => up({ group: g })} />)}
         {row('due', 'Deadline', task.due ? dayLabel(task.due) : 'None', <DayPicker label="Deadline" none="No deadline" quick={false} value={task.due} onChange={(v) => up({ due: v })} />)}
-        {task.date && row('time', 'Time of day', task.start ?? 'Any time', (
-          <div className="chips">
-            <button type="button" className={`pchip ${!task.start ? 'on' : ''}`} aria-pressed={!task.start} onClick={() => up({ start: undefined })}>Any time</button>
-            <label className={`pchip date ${task.start ? 'on' : ''}`}>{task.start ?? 'Pick a time'}<input type="time" aria-label="Start time" value={task.start ?? ''} onChange={(e) => up({ start: e.target.value || undefined })} onClick={(e) => { try { e.currentTarget.showPicker() } catch { /* not supported */ } }} /></label>
-          </div>
-        ))}
+        {task.date && row('time', 'Time of day', task.start ?? 'Any time', <TimePicker value={task.start} onChange={(v) => up({ start: v })} />)}
       </div>
       {confirm
         ? <div className="confirm"><span className="footnote">Delete this task for good?</span><button className="btn" onClick={() => setConfirm(false)}>Keep it</button><button className="btn primary" onClick={() => deleteTask(id)}>Delete</button></div>
