@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { phoneScale } from '../lib/scale'
 import { CapacityBar, DayPill, PageHeader, SectionHeader, TaskCard, ViewSwitch, groupVar } from '../components/ui'
 import { IconCalendar, IconChevronLeft, IconChevronRight, IconPlus } from '../components/Icons'
 import { CapacitySheet, TaskSheet } from '../components/Overlays'
@@ -138,7 +139,7 @@ function TimelineBlock({ t, y, remaining, onOpen, onMove }: { t: TaskView; y: (m
       if (d.touch) { end(); return } // moved before the hold finished: they are scrolling
       activate(e.pointerId)
     }
-    setPreview(clamp(d.start + dy / PX))
+    setPreview(clamp(d.start + dy / phoneScale() / PX))
   }
   const up = () => {
     const d = drag.current; if (!d) return
