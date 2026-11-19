@@ -295,3 +295,55 @@ button.mcell{font:inherit;font-weight:500;font-size:15px;line-height:20px}
 .block.dragging{z-index:7;cursor:grabbing;overflow:visible;box-shadow:0 12px 24px rgba(27,26,25,.22),var(--depth-raised-small);transform:scale(1.015)}
 .block:focus-visible{outline:2px solid var(--brand-sprout);outline-offset:2px}
 .drag-time{position:absolute;left:8px;top:-24px;padding:3px 8px;border-radius:var(--radius-full);background:var(--accent-default);color:#fff;white-space:nowrap}
+
+/* ---- Micro motion. Everything below is switched off by prefers-reduced-motion and the in-app Reduce motion setting. ---- */
+:root{--ease-out:cubic-bezier(.22,1,.36,1);--ease-spring:cubic-bezier(.34,1.56,.64,1)}
+@keyframes fadeIn{from{opacity:0}}
+@keyframes rise{from{opacity:0;translate:0 12px}}
+@keyframes noteIn{from{opacity:0;translate:0 14px;scale:.94}}
+@keyframes pop{0%{scale:.55}60%{scale:1.18}100%{scale:1}}
+@keyframes selPop{0%{scale:.9}60%{scale:1.05}100%{scale:1}}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(27,26,25,.35)}80%,100%{box-shadow:0 0 0 7px rgba(27,26,25,0)}}
+@keyframes breathe{50%{box-shadow:var(--depth-card),0 0 0 4px rgba(169,155,245,.3)}}
+
+/* screens and lists arrive softly */
+.screen,.page,.onb,.welcome{animation:fadeIn .24s ease backwards}
+.stack>.card,.sec>.card,.sec>.fixed,.sec>.add-row,.tpills>.tpill,.legend>div{animation:rise .42s var(--ease-out) backwards}
+.stack>.card:nth-child(3),.sec>.card:nth-child(3){animation-delay:.04s}.stack>.card:nth-child(4),.sec>.card:nth-child(4){animation-delay:.08s}
+.stack>.card:nth-child(5),.sec>.card:nth-child(5){animation-delay:.12s}.stack>.card:nth-child(6),.sec>.card:nth-child(6){animation-delay:.16s}
+.stack>.card:nth-child(n+7),.sec>.card:nth-child(n+7){animation-delay:.2s}
+.stack>.card.card-focus{animation:rise .42s var(--ease-out) backwards,breathe 3.8s ease-in-out .6s infinite}
+.day-panel{animation:rise .3s var(--ease-out) backwards}
+.sticky{animation:noteIn .55s var(--ease-out) backwards}.sticky:nth-child(2){animation-delay:.09s}.sticky:nth-child(3){animation-delay:.18s}
+.block{animation:rise .42s var(--ease-out) backwards;transition:top .2s var(--ease-out),box-shadow .15s ease,transform .15s ease}
+.block.dragging{transition:box-shadow .15s ease,transform .15s ease}
+
+/* sheets and toasts settle with a little spring */
+.sheet{animation:up .42s var(--ease-out)}
+.toast{animation:up .35s var(--ease-spring)}
+.trow-body{animation:rise .22s var(--ease-out) backwards}
+
+/* press feedback */
+.btn,.tabs button,.capture,.pchip,.gc,.gchip,.daypill,.week-step,.add-row,.srow,.pill-btn,.round,.option,.mcell,.wopt,.link,.seg button,.card[role=button],.fixed,.tpill{transition:transform .18s var(--ease-out)}
+.btn:active,.tabs button:active,.pchip:active,.gc:active,.gchip:active,.daypill:active,.add-row:active,.pill-btn:active,.round:active,.option:active,.wopt:active,.seg button:active,.fixed:active,.tpill:active{transform:scale(.96)}
+.card[role=button]:active{transform:scale(.985)}
+.srow:active,.link:active{transform:scale(.99)}
+.mcell:active{transform:scale(.9)}
+.week-step:active{transform:scale(.85)}
+.capture{transition:transform .25s var(--ease-spring),box-shadow .25s ease}
+.capture:active{transform:scale(.92) rotate(90deg)}
+
+/* selections and state changes */
+.tabs button{transition:transform .18s var(--ease-out),background-color .25s ease,color .25s ease}
+.tabs button.on svg{animation:pop .45s var(--ease-spring)}
+.daypill{transition:transform .18s var(--ease-out),background-color .25s ease,color .25s ease}
+.daypill.sel,.mcell.picked{animation:selPop .35s var(--ease-spring)}
+.pchip,.gc,.gchip{transition:transform .18s var(--ease-out),background-color .2s ease,color .2s ease}
+.pchip.on,.gc.on,.gchip.on{animation:selPop .3s var(--ease-spring)}
+.gc.on svg,.gchip.on svg{animation:pop .3s var(--ease-spring)}
+.card-icon.just-done svg{animation:pop .42s var(--ease-spring)}
+.card-icon.just-done{animation:selPop .4s var(--ease-spring)}
+.toggle::after{transition:transform .3s var(--ease-spring)}
+.fill,.bar i,.gbar i{transition:width .6s var(--ease-out),height .6s var(--ease-out)}
+.steps i{transition:background-color .35s ease}
+.now i{animation:ping 2.4s ease-out infinite}

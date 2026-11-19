@@ -35,7 +35,7 @@ export default function Today({ onProfile, onAdd }: { onProfile: () => void; onA
       {view === 'focus' ? (
         <>
           {!past && <CapacityBar title={isToday ? "Today's capacity" : `Capacity for ${name}`} used={used} total={total} fmt={fmtDur} onEdit={() => setCapOpen(true)} />}
-          <section className="stack">
+          <section className="stack" key={day}>
             <SectionHeader title={isToday ? 'Focus for today' : past ? `From ${name}` : `Planned for ${name}`} aside={mine.length ? `${mine.length} ${past ? (mine.length === 1 ? 'task' : 'tasks') : 'picked'}` : undefined} />
             {list.length ? list.map(card) : <p className="footnote muted">{past ? 'Nothing was planned that day.' : isToday ? 'Nothing picked yet. Add something small, or bring one over from Plan.' : 'Nothing planned yet. This day is wide open.'}</p>}
             {!past && <button className="add-row callout" onClick={() => onAdd(day)}><IconPlus size={18} /> Add a task for {isToday ? 'today' : name}</button>}
