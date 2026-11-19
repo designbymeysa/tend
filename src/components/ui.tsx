@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
+import { phoneScale } from '../lib/scale'
 import { Group, TaskView, addDays, dayLabel, effortLabel, todayIso, weekday } from '../state/store'
 import { Doodle, IconBook, IconBriefcase, IconCalendar, IconCheck, IconChevronLeft, IconChevronRight, IconClock, IconFlag, IconHeart, IconList, IconPencil, IconPlus, IconSparkle } from './Icons'
 
@@ -62,7 +63,7 @@ export function Sticky({ id, group, tag, text, rot = 0, style }: { id: string; g
     if (e.pointerType === 'mouse' && e.button !== 0) return
     e.currentTarget.setPointerCapture(e.pointerId); drag.current = { px: e.clientX, py: e.clientY, ox: pos.x, oy: pos.y }; setLifted(true)
   }
-  const move = (e: React.PointerEvent) => { const d = drag.current; if (d) setPos(clamp(d.ox + e.clientX - d.px, d.oy + e.clientY - d.py)) }
+  const move = (e: React.PointerEvent) => { const d = drag.current; if (d) { const k = phoneScale(); setPos(clamp(d.ox + (e.clientX - d.px) / k, d.oy + (e.clientY - d.py) / k)) } }
   const up = () => { if (!drag.current) return; drag.current = null; setLifted(false); save(pos) }
   const key_ = (e: React.KeyboardEvent) => {
     const d = { ArrowLeft: [-8, 0], ArrowRight: [8, 0], ArrowUp: [0, -8], ArrowDown: [0, 8] }[e.key]

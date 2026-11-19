@@ -347,3 +347,12 @@ button.mcell{font:inherit;font-weight:500;font-size:15px;line-height:20px}
 .fill,.bar i,.gbar i{transition:width .6s var(--ease-out),height .6s var(--ease-out)}
 .steps i{transition:background-color .35s ease}
 .now i{animation:ping 2.4s ease-out infinite}
+
+/* Desktop: a real phone shape (390 x 844, about 9:19.5). The frame keeps that size and is scaled to fit the window. */
+.stage-box{display:contents}
+@media (min-width:600px) and (min-height:600px){
+  .stage{min-height:100dvh;align-items:center;padding:0}
+  .stage-box{display:block;flex:none;width:calc(390px * var(--phone-scale,1));height:calc(844px * var(--phone-scale,1))}
+  .phone{width:390px;max-width:none;height:844px;transform:scale(var(--phone-scale,1));transform-origin:0 0;border-radius:46px;
+    box-shadow:0 0 0 9px #1b1a19,0 0 0 11px rgba(255,255,255,.12),0 30px 80px rgba(27,26,25,.28)}
+}

@@ -22,6 +22,16 @@ export default function App() {
   const [replay, setReplay] = useState(() => location.hash === '#onboarding')
   const scroll = useRef<HTMLDivElement>(null)
   useEffect(() => { scroll.current?.scrollTo(0, 0) }, [tab, page])
+  // Desktop: a 390x844 phone frame, scaled down to fit short windows so it never gets squashed
+  useEffect(() => {
+    const fit = () => {
+      const desktop = window.matchMedia('(min-width:600px) and (min-height:600px)').matches
+      const s = desktop ? Math.min(1, (window.innerHeight - 72) / 844, (window.innerWidth - 72) / 390) : 1
+      document.documentElement.style.setProperty('--phone-scale', String(Math.max(0.5, s)))
+    }
+    fit(); window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [])
   // A new calendar day starts fresh: re-check when the tab regains focus and once a minute while it is open
   useEffect(() => {
     const roll = () => useTend.getState().rollDay()
@@ -42,7 +52,7 @@ export default function App() {
   }
   const quickAdd = () => setCapture({ day: tab === 'today' && day >= todayIso() ? day : undefined })
   return (
-    <div className="stage">
+    <div className="stage"><div className="stage-box">
       <div className={`phone ${settings.reduceMotion ? 'reduce-motion' : ''}`}>
         {!mode ? <Welcome /> : !onboarded || replay ? <Onboarding onDone={endOnboarding} /> : (<>
           <div className="scroll" ref={scroll}>
@@ -60,6 +70,6 @@ export default function App() {
           {transition && <TransitionSheet onClose={() => setTransition(false)} />}
         </>)}
       </div>
-    </div>
+    </div></div>
   )
 }
