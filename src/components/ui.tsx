@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { Group, TaskView, addDays, dayLabel, effortLabel, todayIso, weekday } from '../state/store'
 import { Doodle, IconBook, IconBriefcase, IconCalendar, IconCheck, IconChevronLeft, IconChevronRight, IconClock, IconFlag, IconHeart, IconList, IconPencil, IconPlus, IconSparkle } from './Icons'
@@ -122,10 +122,13 @@ export function TaskCard({ task, onToggle, onOpen, meta, label }: CardProps) {
   const g = groupVar(task.group); const Icon = groupIcon[task.group]
   const done = task.status === 'done', focus = task.status === 'in-focus', decision = task.status === 'decision'
   const plain = task.group === 'none' && !done && !decision && !focus
+  // the check pops only at the moment a task becomes done, not every time a done card is drawn
+  const wasDone = useRef(done); const justDone = done && !wasDone.current
+  useEffect(() => { wasDone.current = done }, [done])
   const style: CSSProperties = done || plain ? {} : focus ? { background: g.strong } : decision ? {} : { background: g.bg }
   return (
     <div data-task-id={task.id} className={`card ${done ? 'card-done' : ''} ${decision ? 'card-decision' : ''} ${focus ? 'card-focus' : ''} ${plain ? 'card-plain' : ''}`} style={style} onClick={onOpen} role={onOpen ? 'button' : undefined}>
-      <button className={`card-icon ${done ? 'is-done' : ''}`} style={decision || plain ? { background: 'var(--task-past-icon-bg)' } : undefined}
+      <button className={`card-icon ${done ? 'is-done' : ''} ${justDone ? 'just-done' : ''}`} style={decision || plain ? { background: 'var(--task-past-icon-bg)' } : undefined}
         onClick={(e) => { e.stopPropagation(); onToggle?.() }} aria-label={done ? 'Mark as not done' : 'Mark as done'} aria-pressed={done}>
         {done ? <IconCheck size={20} color="#fff" /> : <Icon size={20} />}
       </button>

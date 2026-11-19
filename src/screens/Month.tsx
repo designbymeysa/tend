@@ -45,7 +45,7 @@ export default function Month({ onProfile, onOpenDay, onAdd }: { onProfile: () =
           </div>
         ))}
       </div>
-      {sel ? <DayPanel day={sel} onOpenDay={onOpenDay} onAdd={onAdd} onOpen={setSheet} onToggle={toggleDone} all={all} /> : <p className="footnote muted" style={{ textAlign: 'center', marginTop: -8 }}>Tap a day to see what is planned for it.</p>}
+      {sel ? <DayPanel key={sel} day={sel} onOpenDay={onOpenDay} onAdd={onAdd} onOpen={setSheet} onToggle={toggleDone} all={all} /> : <p className="footnote muted" style={{ textAlign: 'center', marginTop: -8 }}>Tap a day to see what is planned for it.</p>}
       <section className="sec" style={{ gap: 8 }}>
         <span className="label-mono" style={{ color: 'var(--text-secondary)' }}>FIXED DATES THIS MONTH</span>
         {fixed.length ? fixed.map((t) => (
